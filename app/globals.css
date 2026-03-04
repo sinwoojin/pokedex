@@ -202,7 +202,7 @@ button:disabled {
 }
 
 .modal-fallback {
-  width: 180px;
+  width: 100%;
 }
 
 .id {
@@ -351,7 +351,7 @@ button:disabled {
 }
 
 .modal {
-  width: min(640px, 100%);
+  width: min(920px, 100%);
   max-height: 88vh;
   overflow: auto;
   border: 1px solid var(--line);
@@ -366,11 +366,36 @@ button:disabled {
 }
 
 .modal-header {
-  margin-top: 0.5rem;
+  margin-top: 0.3rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
+}
+
+.modal-main-grid {
+  margin-top: 0.45rem;
+  display: grid;
+  grid-template-columns: minmax(260px, 1.2fr) minmax(0, 1fr);
+  gap: 1.1rem;
+}
+
+.modal-left {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 0.55rem;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.modal-left img {
+  width: 100%;
+  height: auto;
+}
+
+.modal-right {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .modal-header h3 {
@@ -429,6 +454,33 @@ button:disabled {
   height: 10px;
 }
 
+.evolution-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.evolution-list li {
+  display: flex;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.evolution-list span {
+  border: 1px solid #48698b;
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+}
+
+.evolution-list em {
+  font-style: normal;
+  color: var(--muted);
+}
+
 @keyframes shimmer {
   from {
     background-position: 200% 0;
@@ -449,5 +501,9 @@ button:disabled {
 
   .search-form input {
     width: 100%;
+  }
+
+  .modal-main-grid {
+    grid-template-columns: 1fr;
   }
 }

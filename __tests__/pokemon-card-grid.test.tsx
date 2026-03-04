@@ -55,6 +55,7 @@ describe("PokemonCardGrid", () => {
           speciesColor: "노랑",
           representativeColor: "#E9C84A",
           weaknesses: [{ name: "땅", color: "#E2BF65", multiplier: 2 }],
+          evolutionStages: ["피츄", "피카츄", "라이츄"],
           stats: [{ name: "HP", value: 35 }]
         }
       ]
@@ -71,6 +72,8 @@ describe("PokemonCardGrid", () => {
     expect(screen.getByText("특성")).toBeInTheDocument();
     expect(screen.getByText("피뢰침")).toBeInTheDocument();
     expect(screen.getByText("땅 x2")).toBeInTheDocument();
+    expect(screen.getByText("진화 과정")).toBeInTheDocument();
+    expect(screen.getByText("피츄")).toBeInTheDocument();
   });
 
   it("shows skeleton cards while loading", () => {

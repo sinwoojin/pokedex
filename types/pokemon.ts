@@ -82,6 +82,21 @@ export type PokemonSpeciesResponse = {
     name: string;
     url: string;
   };
+  evolution_chain: {
+    url: string;
+  };
+};
+
+export type PokemonEvolutionChainNode = {
+  species: {
+    name: string;
+    url: string;
+  };
+  evolves_to: PokemonEvolutionChainNode[];
+};
+
+export type PokemonEvolutionChainResponse = {
+  chain: PokemonEvolutionChainNode;
 };
 
 export type PokemonAbilityResponse = {
@@ -111,5 +126,6 @@ export type PokemonCard = {
   speciesColor: string;
   representativeColor: string;
   weaknesses: PokemonWeakness[];
+  evolutionStages: string[];
   stats: Array<{ name: string; value: number }>;
 };

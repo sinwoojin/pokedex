@@ -10,6 +10,7 @@ import type {
   PokemonApiDetail,
   PokemonApiTypeDetail,
   PokemonCard,
+  PokemonEvolutionChainResponse,
   PokemonListResponse,
   PokemonSpeciesResponse,
   PokemonWeakness
@@ -44,6 +45,7 @@ const statNameMap: Record<string, string> = {
 
 const typeDetailCache = new Map<string, Promise<PokemonApiTypeDetail>>();
 const abilityDetailCache = new Map<string, Promise<PokemonAbilityResponse>>();
+const speciesDetailCache = new Map<string, Promise<PokemonSpeciesResponse>>();
 
 const getLocalizedFromNames = (
   names: Array<{ name: string; language: { name: string } }> | undefined,
@@ -80,6 +82,49 @@ const fetchAbilityDetail = (abilityUrl: string) => {
 
   abilityDetailCache.set(abilityUrl, protectedRequest);
   return protectedRequest;
+};
+
+const fetchSpeciesDetail = (speciesUrl: string) => {
+  const cached = speciesDetailCache.get(speciesUrl);
+  if (cached) {
+    return cached;
+  }
+
+  const request = fetchJson<PokemonSpeciesResponse>(speciesUrl);
+  const protectedRequest = request.catch((error) => {
+    speciesDetailCache.delete(speciesUrl);
+    throw error;
+  });
+
+  speciesDetailCache.set(speciesUrl, protectedRequest);
+  return protectedRequest;
+};
+
+const collectEvolutionSpeciesUrls = (
+  node: PokemonEvolutionChainResponse["chain"],
+  acc: string[] = []
+): string[] => {
+  acc.push(node.species.url);
+  for (const next of node.evolves_to) {
+    collectEvolutionSpeciesUrls(next, acc);
+  }
+  return acc;
+};
+
+const resolveEvolutionStages = async (evolutionChainUrl: string): Promise<string[]> => {
+  const evolutionChain = await fetchJson<PokemonEvolutionChainResponse>(evolutionChainUrl);
+  const speciesUrls = collectEvolutionSpeciesUrls(evolutionChain.chain);
+  const uniqueUrls = Array.from(new Set(speciesUrls));
+
+  const localizedNames = await Promise.all(
+    uniqueUrls.map(async (speciesUrl) => {
+      const species = await fetchSpeciesDetail(speciesUrl);
+      const fallback = formatName(speciesUrl.split("/").filter(Boolean).at(-1) ?? "포켓몬");
+      return getLocalizedFromNames(species.names, fallback);
+    })
+  );
+
+  return localizedNames;
 };
 
 const resolveWeaknesses = async (types: string[]): Promise<PokemonWeakness[]> => {
@@ -120,7 +165,7 @@ export const toPokemonCard = async (detail: PokemonApiDetail): Promise<PokemonCa
   const imageUrl =
     detail.sprites.other?.["official-artwork"]?.front_default ?? detail.sprites.front_default ?? null;
   const typeEnglishNames = detail.types.map((item) => item.type.name);
-  const species = await fetchJson<PokemonSpeciesResponse>(detail.species.url);
+  const species = await fetchSpeciesDetail(detail.species.url);
   const abilityDetails = await Promise.all(
     detail.abilities.map((ability) => fetchAbilityDetail(ability.ability.url))
   );
@@ -134,6 +179,7 @@ export const toPokemonCard = async (detail: PokemonApiDetail): Promise<PokemonCa
   const weaknesses = await resolveWeaknesses(typeEnglishNames);
   const localizedTypes = typeEnglishNames.map((name) => getKoreanTypeName(name));
   const localizedSpeciesColor = getKoreanSpeciesColorName(species.color.name);
+  const evolutionStages = await resolveEvolutionStages(species.evolution_chain.url);
 
   return {
     id: detail.id,
@@ -146,6 +192,7 @@ export const toPokemonCard = async (detail: PokemonApiDetail): Promise<PokemonCa
     speciesColor: localizedSpeciesColor,
     representativeColor,
     weaknesses,
+    evolutionStages,
     stats: detail.stats.map((item) => ({
       name: statNameMap[item.stat.name] ?? item.stat.name,
       value: item.base_stat

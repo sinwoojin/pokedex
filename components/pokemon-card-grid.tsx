@@ -190,59 +190,78 @@ export function PokemonCardGrid() {
             <button type="button" className="ghost close-modal" onClick={() => setSelected(null)}>
               닫기
             </button>
-            <div className="modal-header">
-              <div>
-                <p className="id">#{selected.id.toString().padStart(4, "0")}</p>
-                <h3>{selected.name}</h3>
+            <div className="modal-main-grid">
+              <div className="modal-left">
+                {selected.imageUrl ? (
+                  <Image src={selected.imageUrl} alt={selected.name} width={360} height={360} unoptimized />
+                ) : (
+                  <div className="image-fallback modal-fallback">이미지 없음</div>
+                )}
               </div>
-              {selected.imageUrl ? (
-                <Image src={selected.imageUrl} alt={selected.name} width={180} height={180} unoptimized />
-              ) : (
-                <div className="image-fallback modal-fallback">이미지 없음</div>
-              )}
+
+              <div className="modal-right">
+                <div className="modal-header">
+                  <div>
+                    <p className="id">#{selected.id.toString().padStart(4, "0")}</p>
+                    <h3>{selected.name}</h3>
+                  </div>
+                </div>
+
+                <section className="modal-section">
+                  <h4>타입</h4>
+                  <ul className="type-list">
+                    {selected.types.map((type) => (
+                      <li key={type} style={{ borderColor: getTypeColor(type), color: getTypeColor(type) }}>
+                        {type}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+
+                <section className="modal-section">
+                  <h4>약점 타입</h4>
+                  <ul className="ability-list">
+                    {selected.weaknesses.map((weakness) => (
+                      <li key={weakness.name} style={{ borderColor: weakness.color, color: weakness.color }}>
+                        {weakness.name} x{weakness.multiplier}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+
+                <section className="modal-section">
+                  <h4>특성</h4>
+                  <ul className="ability-list">
+                    {selected.abilities.map((ability) => (
+                      <li key={ability}>{ability}</li>
+                    ))}
+                  </ul>
+                </section>
+
+                <section className="modal-section">
+                  <h4>능력치</h4>
+                  <ul className="stats-list">
+                    {selected.stats.map((stat) => (
+                      <li key={stat.name}>
+                        <span>{stat.name}</span>
+                        <div>
+                          <strong>{stat.value}</strong>
+                          <progress max={255} value={stat.value} />
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              </div>
             </div>
 
             <section className="modal-section">
-              <h4>타입</h4>
-              <ul className="type-list">
-                {selected.types.map((type) => (
-                  <li key={type} style={{ borderColor: getTypeColor(type), color: getTypeColor(type) }}>
-                    {type}
-                  </li>
-                ))}
-              </ul>
-            </section>
-
-            <section className="modal-section">
-              <h4>약점 타입</h4>
-              <ul className="ability-list">
-                {selected.weaknesses.map((weakness) => (
-                  <li key={weakness.name} style={{ borderColor: weakness.color, color: weakness.color }}>
-                    {weakness.name} x{weakness.multiplier}
-                  </li>
-                ))}
-              </ul>
-            </section>
-
-            <section className="modal-section">
-              <h4>특성</h4>
-              <ul className="ability-list">
-                {selected.abilities.map((ability) => (
-                  <li key={ability}>{ability}</li>
-                ))}
-              </ul>
-            </section>
-
-            <section className="modal-section">
-              <h4>능력치</h4>
-              <ul className="stats-list">
-                {selected.stats.map((stat) => (
-                  <li key={stat.name}>
-                    <span>{stat.name}</span>
-                    <div>
-                      <strong>{stat.value}</strong>
-                      <progress max={255} value={stat.value} />
-                    </div>
+              <h4>진화 과정</h4>
+              <ul className="evolution-list">
+                {selected.evolutionStages.map((stage, index) => (
+                  <li key={`${stage}-${index}`}>
+                    <span>{stage}</span>
+                    {index < selected.evolutionStages.length - 1 && <em>→</em>}
                   </li>
                 ))}
               </ul>

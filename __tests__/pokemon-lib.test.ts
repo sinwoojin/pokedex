@@ -26,11 +26,62 @@ describe("toPokemonCard", () => {
     const mockFetch = jest.fn(async (input: RequestInfo | URL) => {
       const url = input.toString();
       if (url.includes("pokemon-species")) {
+        if (url.endsWith("/25/")) {
+          return {
+            ok: true,
+            json: async () => ({
+              names: [{ name: "피카츄", language: { name: "ko", url: "" } }],
+              color: { name: "yellow", url: "" },
+              evolution_chain: { url: "https://pokeapi.co/api/v2/evolution-chain/10/" }
+            })
+          } as Response;
+        }
+
+        if (url.endsWith("/172/")) {
+          return {
+            ok: true,
+            json: async () => ({
+              names: [{ name: "피츄", language: { name: "ko", url: "" } }],
+              color: { name: "yellow", url: "" },
+              evolution_chain: { url: "https://pokeapi.co/api/v2/evolution-chain/10/" }
+            })
+          } as Response;
+        }
+
+        if (url.endsWith("/26/")) {
+          return {
+            ok: true,
+            json: async () => ({
+              names: [{ name: "라이츄", language: { name: "ko", url: "" } }],
+              color: { name: "yellow", url: "" },
+              evolution_chain: { url: "https://pokeapi.co/api/v2/evolution-chain/10/" }
+            })
+          } as Response;
+        }
+
+        return {
+          ok: true,
+          json: async () => ({ names: [], color: { name: "yellow", url: "" }, evolution_chain: { url: "" } })
+        } as Response;
+      }
+      if (url.includes("evolution-chain")) {
         return {
           ok: true,
           json: async () => ({
-            names: [{ name: "피카츄", language: { name: "ko", url: "" } }],
-            color: { name: "yellow", url: "" }
+            chain: {
+              species: { name: "pichu", url: "https://pokeapi.co/api/v2/pokemon-species/172/" },
+              evolves_to: [
+                {
+                  species: { name: "pikachu", url: "https://pokeapi.co/api/v2/pokemon-species/25/" },
+                  evolves_to: [
+                    {
+                      species: { name: "raichu", url: "https://pokeapi.co/api/v2/pokemon-species/26/" },
+                      evolves_to: []
+                    }
+                  ]
+                }
+              ]
+            }
           })
         } as Response;
       }
@@ -78,6 +129,7 @@ describe("toPokemonCard", () => {
       speciesColor: "노랑",
       representativeColor: "#E9C84A",
       weaknesses: [{ name: "땅", multiplier: 2, color: "#E2BF65" }],
+      evolutionStages: ["피츄", "피카츄", "라이츄"],
       stats: [{ name: "HP", value: 35 }]
     });
 
