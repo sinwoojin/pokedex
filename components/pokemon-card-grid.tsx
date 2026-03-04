@@ -1,6 +1,7 @@
 "use client";
 
-import { fetchPokemonByNameOrId, fetchPokemonPage } from "@/lib/pokemon";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { fetchPokemonByQuery, fetchPokemonPage, PokemonApiError } from "@/lib/pokemon";
 import { getTypeColor } from "@/lib/pokemon-colors";
 import { usePokedexStore } from "@/providers/pokedex-store-provider";
 import { PAGE_SIZE } from "@/stores/pokedex-store";
@@ -9,58 +10,52 @@ import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 
 export function PokemonCardGrid() {
+  const queryClient = useQueryClient();
   const query = usePokedexStore((store) => store.query);
   const page = usePokedexStore((store) => store.page);
+  const sortOrder = usePokedexStore((store) => store.sortOrder);
   const nextPage = usePokedexStore((store) => store.nextPage);
   const prevPage = usePokedexStore((store) => store.prevPage);
 
-  const [cards, setCards] = useState<PokemonCard[]>([]);
   const [selected, setSelected] = useState<PokemonCard | null>(null);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let isMounted = true;
-    setLoading(true);
-    setError(null);
+  const pageQuery = useQuery({
+    queryKey: ["pokemon-page", sortOrder, page, PAGE_SIZE],
+    queryFn: () => fetchPokemonPage(page, PAGE_SIZE, sortOrder),
+    enabled: !query,
+    placeholderData: keepPreviousData
+  });
 
-    const run = async () => {
-      try {
-        if (query) {
-          const one = await fetchPokemonByNameOrId(query);
-          if (!isMounted) {
-            return;
-          }
-          setCards([one]);
-          setTotal(1);
-        } else {
-          const result = await fetchPokemonPage(page, PAGE_SIZE);
-          if (!isMounted) {
-            return;
-          }
-          setCards(result.cards);
-          setTotal(result.total);
-        }
-      } catch {
-        if (!isMounted) {
-          return;
-        }
-        setError("포켓몬을 찾을 수 없습니다. 이름 또는 번호를 확인해주세요.");
-        setCards([]);
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    };
+  const searchQuery = useQuery({
+    queryKey: ["pokemon-search", sortOrder, query],
+    queryFn: () => fetchPokemonByQuery(query, sortOrder),
+    enabled: Boolean(query)
+  });
 
-    run();
+  const resolveErrorMessage = (currentError: unknown, isSearchMode: boolean): string | null => {
+    if (!currentError) {
+      return null;
+    }
 
-    return () => {
-      isMounted = false;
-    };
-  }, [page, query]);
+    if (isSearchMode && currentError instanceof PokemonApiError && currentError.status === 404) {
+      return "포켓몬을 찾을 수 없습니다. 이름 또는 번호를 확인해주세요.";
+    }
+
+    return "데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.";
+  };
+
+  const cards = useMemo(() => {
+    if (query) {
+      return searchQuery.data ?? [];
+    }
+    return pageQuery.data?.cards ?? [];
+  }, [pageQuery.data?.cards, query, searchQuery.data]);
+
+  const total = query ? cards.length : pageQuery.data?.total ?? 0;
+  const loading = query ? searchQuery.isPending : pageQuery.isPending;
+  const isPageTransitionLoading = !query && pageQuery.isFetching;
+  const currentError = query ? searchQuery.error : pageQuery.error;
+  const error = resolveErrorMessage(currentError, Boolean(query));
 
   const maxPage = useMemo(() => {
     if (query) {
@@ -72,11 +67,37 @@ export function PokemonCardGrid() {
   const canPrev = !query && page > 1;
   const canNext = !query && page < maxPage;
 
+  useEffect(() => {
+    if (query || !pageQuery.data || page >= maxPage) {
+      return;
+    }
+
+    const nextPageNumber = page + 1;
+    void queryClient.prefetchQuery({
+      queryKey: ["pokemon-page", sortOrder, nextPageNumber, PAGE_SIZE],
+      queryFn: () => fetchPokemonPage(nextPageNumber, PAGE_SIZE, sortOrder)
+    });
+  }, [maxPage, page, pageQuery.data, query, queryClient, sortOrder]);
+
+  const handlePrev = () => {
+    if (isPageTransitionLoading) {
+      return;
+    }
+    prevPage();
+  };
+
+  const handleNext = () => {
+    if (isPageTransitionLoading) {
+      return;
+    }
+    nextPage();
+  };
+
   return (
     <section>
       <div className="status-row">
         <p>{query ? "검색 결과" : `전체 ${total.toLocaleString()}마리`}</p>
-        <p>{query ? "1 / 1" : `${page} / ${maxPage}`}</p>
+        <p>{query ? `${total.toLocaleString()}건` : `${page} / ${maxPage}`}</p>
       </div>
 
       {!query && (
@@ -84,23 +105,28 @@ export function PokemonCardGrid() {
           <button
             type="button"
             className="ghost"
-            disabled={!canPrev}
-            onClick={prevPage}
+            disabled={!canPrev || isPageTransitionLoading}
+            onClick={handlePrev}
           >
             이전
           </button>
           <button
             type="button"
             className="ghost"
-            disabled={!canNext}
-            onClick={nextPage}
+            disabled={!canNext || isPageTransitionLoading}
+            onClick={handleNext}
           >
             다음
           </button>
         </div>
       )}
 
+      {isPageTransitionLoading && <p className="page-loading-hint">페이지 불러오는 중...</p>}
+
       {error && <p className="message error">{error}</p>}
+      {!error && query && !loading && cards.length === 0 && (
+        <p className="message">검색 결과가 없습니다. 다른 키워드로 시도해주세요.</p>
+      )}
 
       {!error && (
         <div className="grid">
@@ -168,59 +194,78 @@ export function PokemonCardGrid() {
             <button type="button" className="ghost close-modal" onClick={() => setSelected(null)}>
               닫기
             </button>
-            <div className="modal-header">
-              <div>
-                <p className="id">#{selected.id.toString().padStart(4, "0")}</p>
-                <h3>{selected.name}</h3>
+            <div className="modal-main-grid">
+              <div className="modal-left">
+                {selected.imageUrl ? (
+                  <Image src={selected.imageUrl} alt={selected.name} width={360} height={360} unoptimized />
+                ) : (
+                  <div className="image-fallback modal-fallback">이미지 없음</div>
+                )}
               </div>
-              {selected.imageUrl ? (
-                <Image src={selected.imageUrl} alt={selected.name} width={180} height={180} unoptimized />
-              ) : (
-                <div className="image-fallback modal-fallback">이미지 없음</div>
-              )}
+
+              <div className="modal-right">
+                <div className="modal-header">
+                  <div>
+                    <p className="id">#{selected.id.toString().padStart(4, "0")}</p>
+                    <h3>{selected.name}</h3>
+                  </div>
+                </div>
+
+                <section className="modal-section">
+                  <h4>타입</h4>
+                  <ul className="type-list">
+                    {selected.types.map((type) => (
+                      <li key={type} style={{ borderColor: getTypeColor(type), color: getTypeColor(type) }}>
+                        {type}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+
+                <section className="modal-section">
+                  <h4>약점 타입</h4>
+                  <ul className="ability-list">
+                    {selected.weaknesses.map((weakness) => (
+                      <li key={weakness.name} style={{ borderColor: weakness.color, color: weakness.color }}>
+                        {weakness.name} x{weakness.multiplier}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+
+                <section className="modal-section">
+                  <h4>특성</h4>
+                  <ul className="ability-list">
+                    {selected.abilities.map((ability) => (
+                      <li key={ability}>{ability}</li>
+                    ))}
+                  </ul>
+                </section>
+
+                <section className="modal-section">
+                  <h4>능력치</h4>
+                  <ul className="stats-list">
+                    {selected.stats.map((stat) => (
+                      <li key={stat.name}>
+                        <span>{stat.name}</span>
+                        <div>
+                          <strong>{stat.value}</strong>
+                          <progress max={255} value={stat.value} />
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              </div>
             </div>
 
             <section className="modal-section">
-              <h4>타입</h4>
-              <ul className="type-list">
-                {selected.types.map((type) => (
-                  <li key={type} style={{ borderColor: getTypeColor(type), color: getTypeColor(type) }}>
-                    {type}
-                  </li>
-                ))}
-              </ul>
-            </section>
-
-            <section className="modal-section">
-              <h4>약점 타입</h4>
-              <ul className="ability-list">
-                {selected.weaknesses.map((weakness) => (
-                  <li key={weakness.name} style={{ borderColor: weakness.color, color: weakness.color }}>
-                    {weakness.name} x{weakness.multiplier}
-                  </li>
-                ))}
-              </ul>
-            </section>
-
-            <section className="modal-section">
-              <h4>특성</h4>
-              <ul className="ability-list">
-                {selected.abilities.map((ability) => (
-                  <li key={ability}>{ability}</li>
-                ))}
-              </ul>
-            </section>
-
-            <section className="modal-section">
-              <h4>능력치</h4>
-              <ul className="stats-list">
-                {selected.stats.map((stat) => (
-                  <li key={stat.name}>
-                    <span>{stat.name}</span>
-                    <div>
-                      <strong>{stat.value}</strong>
-                      <progress max={255} value={stat.value} />
-                    </div>
+              <h4>진화 과정</h4>
+              <ul className="evolution-list">
+                {selected.evolutionStages.map((stage, index) => (
+                  <li key={`${stage}-${index}`}>
+                    <span>{stage}</span>
+                    {index < selected.evolutionStages.length - 1 && <em>→</em>}
                   </li>
                 ))}
               </ul>
