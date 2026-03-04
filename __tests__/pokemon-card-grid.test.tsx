@@ -1,9 +1,10 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { PokemonCardGrid } from "@/components/pokemon-card-grid";
 import { PokedexStoreProvider } from "@/providers/pokedex-store-provider";
 import type { PokemonCard } from "@/types/pokemon";
-import type { ComponentProps } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import type Image from "next/image";
 
 jest.mock("next/image", () => ({
@@ -21,6 +22,22 @@ jest.mock("@/lib/pokemon", () => ({
 import { fetchPokemonPage } from "@/lib/pokemon";
 
 const mockedFetchPokemonPage = jest.mocked(fetchPokemonPage);
+
+const renderWithProviders = (ui: ReactNode) => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false
+      }
+    }
+  });
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <PokedexStoreProvider>{ui}</PokedexStoreProvider>
+    </QueryClientProvider>
+  );
+};
 
 describe("PokemonCardGrid", () => {
   it("opens detail modal when card is clicked", async () => {
@@ -43,11 +60,7 @@ describe("PokemonCardGrid", () => {
       ]
     });
 
-    render(
-      <PokedexStoreProvider>
-        <PokemonCardGrid />
-      </PokedexStoreProvider>
-    );
+    renderWithProviders(<PokemonCardGrid />);
 
     await waitFor(() => expect(screen.getByText("피카츄")).toBeInTheDocument());
     await userEvent.click(screen.getByRole("button", { name: "피카츄 카드 상세 보기" }));
@@ -62,11 +75,7 @@ describe("PokemonCardGrid", () => {
     const pendingPromise = new Promise<{ cards: PokemonCard[]; total: number }>(() => undefined);
     mockedFetchPokemonPage.mockReturnValue(pendingPromise);
 
-    render(
-      <PokedexStoreProvider>
-        <PokemonCardGrid />
-      </PokedexStoreProvider>
-    );
+    renderWithProviders(<PokemonCardGrid />);
 
     expect(screen.getAllByTestId("pokemon-skeleton").length).toBeGreaterThan(0);
   });

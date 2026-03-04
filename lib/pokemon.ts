@@ -17,6 +17,16 @@ import type {
 
 const API_BASE = "https://pokeapi.co/api/v2";
 
+export class PokemonApiError extends Error {
+  public readonly status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "PokemonApiError";
+    this.status = status;
+  }
+}
+
 const formatName = (name: string) =>
   name
     .split("-")
@@ -47,8 +57,13 @@ const fetchTypeDetail = (typeName: string) => {
   }
 
   const request = fetchJson<PokemonApiTypeDetail>(`${API_BASE}/type/${typeName}`);
-  typeDetailCache.set(typeName, request);
-  return request;
+  const protectedRequest = request.catch((error) => {
+    typeDetailCache.delete(typeName);
+    throw error;
+  });
+
+  typeDetailCache.set(typeName, protectedRequest);
+  return protectedRequest;
 };
 
 const fetchAbilityDetail = (abilityUrl: string) => {
@@ -58,8 +73,13 @@ const fetchAbilityDetail = (abilityUrl: string) => {
   }
 
   const request = fetchJson<PokemonAbilityResponse>(abilityUrl);
-  abilityDetailCache.set(abilityUrl, request);
-  return request;
+  const protectedRequest = request.catch((error) => {
+    abilityDetailCache.delete(abilityUrl);
+    throw error;
+  });
+
+  abilityDetailCache.set(abilityUrl, protectedRequest);
+  return protectedRequest;
 };
 
 const resolveWeaknesses = async (types: string[]): Promise<PokemonWeakness[]> => {
@@ -136,7 +156,7 @@ export const toPokemonCard = async (detail: PokemonApiDetail): Promise<PokemonCa
 const fetchJson = async <T>(url: string): Promise<T> => {
   const response = await fetch(url, { cache: "no-store" });
   if (!response.ok) {
-    throw new Error(`PokeAPI request failed (${response.status})`);
+    throw new PokemonApiError(response.status, `PokeAPI request failed (${response.status})`);
   }
   return (await response.json()) as T;
 };

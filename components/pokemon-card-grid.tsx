@@ -1,12 +1,13 @@
 "use client";
 
-import { fetchPokemonByNameOrId, fetchPokemonPage } from "@/lib/pokemon";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { fetchPokemonByNameOrId, fetchPokemonPage, PokemonApiError } from "@/lib/pokemon";
 import { getTypeColor } from "@/lib/pokemon-colors";
 import { usePokedexStore } from "@/providers/pokedex-store-provider";
 import { PAGE_SIZE } from "@/stores/pokedex-store";
 import type { PokemonCard } from "@/types/pokemon";
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 export function PokemonCardGrid() {
   const query = usePokedexStore((store) => store.query);
@@ -14,53 +15,44 @@ export function PokemonCardGrid() {
   const nextPage = usePokedexStore((store) => store.nextPage);
   const prevPage = usePokedexStore((store) => store.prevPage);
 
-  const [cards, setCards] = useState<PokemonCard[]>([]);
   const [selected, setSelected] = useState<PokemonCard | null>(null);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let isMounted = true;
-    setLoading(true);
-    setError(null);
+  const pageQuery = useQuery({
+    queryKey: ["pokemon-page", page, PAGE_SIZE],
+    queryFn: () => fetchPokemonPage(page, PAGE_SIZE),
+    enabled: !query,
+    placeholderData: keepPreviousData
+  });
 
-    const run = async () => {
-      try {
-        if (query) {
-          const one = await fetchPokemonByNameOrId(query);
-          if (!isMounted) {
-            return;
-          }
-          setCards([one]);
-          setTotal(1);
-        } else {
-          const result = await fetchPokemonPage(page, PAGE_SIZE);
-          if (!isMounted) {
-            return;
-          }
-          setCards(result.cards);
-          setTotal(result.total);
-        }
-      } catch {
-        if (!isMounted) {
-          return;
-        }
-        setError("포켓몬을 찾을 수 없습니다. 이름 또는 번호를 확인해주세요.");
-        setCards([]);
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    };
+  const searchQuery = useQuery({
+    queryKey: ["pokemon-search", query],
+    queryFn: () => fetchPokemonByNameOrId(query),
+    enabled: Boolean(query)
+  });
 
-    run();
+  const resolveErrorMessage = (currentError: unknown, isSearchMode: boolean): string | null => {
+    if (!currentError) {
+      return null;
+    }
 
-    return () => {
-      isMounted = false;
-    };
-  }, [page, query]);
+    if (isSearchMode && currentError instanceof PokemonApiError && currentError.status === 404) {
+      return "포켓몬을 찾을 수 없습니다. 이름 또는 번호를 확인해주세요.";
+    }
+
+    return "데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.";
+  };
+
+  const cards = useMemo(() => {
+    if (query) {
+      return searchQuery.data ? [searchQuery.data] : [];
+    }
+    return pageQuery.data?.cards ?? [];
+  }, [pageQuery.data?.cards, query, searchQuery.data]);
+
+  const total = query ? (searchQuery.data ? 1 : 0) : pageQuery.data?.total ?? 0;
+  const loading = query ? searchQuery.isPending : pageQuery.isPending;
+  const currentError = query ? searchQuery.error : pageQuery.error;
+  const error = resolveErrorMessage(currentError, Boolean(query));
 
   const maxPage = useMemo(() => {
     if (query) {
