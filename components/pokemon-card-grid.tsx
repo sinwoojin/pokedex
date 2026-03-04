@@ -1,7 +1,7 @@
 "use client";
 
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchPokemonByNameOrId, fetchPokemonPage, PokemonApiError } from "@/lib/pokemon";
+import { fetchPokemonByQuery, fetchPokemonPage, PokemonApiError } from "@/lib/pokemon";
 import { getTypeColor } from "@/lib/pokemon-colors";
 import { usePokedexStore } from "@/providers/pokedex-store-provider";
 import { PAGE_SIZE } from "@/stores/pokedex-store";
@@ -13,21 +13,22 @@ export function PokemonCardGrid() {
   const queryClient = useQueryClient();
   const query = usePokedexStore((store) => store.query);
   const page = usePokedexStore((store) => store.page);
+  const sortOrder = usePokedexStore((store) => store.sortOrder);
   const nextPage = usePokedexStore((store) => store.nextPage);
   const prevPage = usePokedexStore((store) => store.prevPage);
 
   const [selected, setSelected] = useState<PokemonCard | null>(null);
 
   const pageQuery = useQuery({
-    queryKey: ["pokemon-page", page, PAGE_SIZE],
-    queryFn: () => fetchPokemonPage(page, PAGE_SIZE),
+    queryKey: ["pokemon-page", sortOrder, page, PAGE_SIZE],
+    queryFn: () => fetchPokemonPage(page, PAGE_SIZE, sortOrder),
     enabled: !query,
     placeholderData: keepPreviousData
   });
 
   const searchQuery = useQuery({
-    queryKey: ["pokemon-search", query],
-    queryFn: () => fetchPokemonByNameOrId(query),
+    queryKey: ["pokemon-search", sortOrder, query],
+    queryFn: () => fetchPokemonByQuery(query, sortOrder),
     enabled: Boolean(query)
   });
 
@@ -45,12 +46,12 @@ export function PokemonCardGrid() {
 
   const cards = useMemo(() => {
     if (query) {
-      return searchQuery.data ? [searchQuery.data] : [];
+      return searchQuery.data ?? [];
     }
     return pageQuery.data?.cards ?? [];
   }, [pageQuery.data?.cards, query, searchQuery.data]);
 
-  const total = query ? (searchQuery.data ? 1 : 0) : pageQuery.data?.total ?? 0;
+  const total = query ? cards.length : pageQuery.data?.total ?? 0;
   const loading = query ? searchQuery.isPending : pageQuery.isPending;
   const isPageTransitionLoading = !query && pageQuery.isFetching;
   const currentError = query ? searchQuery.error : pageQuery.error;
@@ -73,10 +74,10 @@ export function PokemonCardGrid() {
 
     const nextPageNumber = page + 1;
     void queryClient.prefetchQuery({
-      queryKey: ["pokemon-page", nextPageNumber, PAGE_SIZE],
-      queryFn: () => fetchPokemonPage(nextPageNumber, PAGE_SIZE)
+      queryKey: ["pokemon-page", sortOrder, nextPageNumber, PAGE_SIZE],
+      queryFn: () => fetchPokemonPage(nextPageNumber, PAGE_SIZE, sortOrder)
     });
-  }, [maxPage, page, pageQuery.data, query, queryClient]);
+  }, [maxPage, page, pageQuery.data, query, queryClient, sortOrder]);
 
   const handlePrev = () => {
     if (isPageTransitionLoading) {
@@ -96,7 +97,7 @@ export function PokemonCardGrid() {
     <section>
       <div className="status-row">
         <p>{query ? "검색 결과" : `전체 ${total.toLocaleString()}마리`}</p>
-        <p>{query ? "1 / 1" : `${page} / ${maxPage}`}</p>
+        <p>{query ? `${total.toLocaleString()}건` : `${page} / ${maxPage}`}</p>
       </div>
 
       {!query && (
@@ -123,6 +124,9 @@ export function PokemonCardGrid() {
       {isPageTransitionLoading && <p className="page-loading-hint">페이지 불러오는 중...</p>}
 
       {error && <p className="message error">{error}</p>}
+      {!error && query && !loading && cards.length === 0 && (
+        <p className="message">검색 결과가 없습니다. 다른 키워드로 시도해주세요.</p>
+      )}
 
       {!error && (
         <div className="grid">

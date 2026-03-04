@@ -15,12 +15,13 @@ jest.mock("next/image", () => ({
 }));
 
 jest.mock("@/lib/pokemon", () => ({
-  fetchPokemonByNameOrId: jest.fn(),
+  fetchPokemonByQuery: jest.fn(),
   fetchPokemonPage: jest.fn()
 }));
 
-import { fetchPokemonPage } from "@/lib/pokemon";
+import { fetchPokemonByQuery, fetchPokemonPage } from "@/lib/pokemon";
 
+const mockedFetchPokemonByQuery = jest.mocked(fetchPokemonByQuery);
 const mockedFetchPokemonPage = jest.mocked(fetchPokemonPage);
 
 const renderWithProviders = (ui: ReactNode) => {
@@ -62,6 +63,7 @@ describe("PokemonCardGrid", () => {
     };
 
     mockedFetchPokemonPage.mockResolvedValue(sampleResponse);
+    mockedFetchPokemonByQuery.mockResolvedValue([]);
 
     renderWithProviders(<PokemonCardGrid />);
 
@@ -79,6 +81,7 @@ describe("PokemonCardGrid", () => {
   it("shows skeleton cards while loading", () => {
     const pendingPromise = new Promise<{ cards: PokemonCard[]; total: number }>(() => undefined);
     mockedFetchPokemonPage.mockReturnValue(pendingPromise);
+    mockedFetchPokemonByQuery.mockResolvedValue([]);
 
     renderWithProviders(<PokemonCardGrid />);
 

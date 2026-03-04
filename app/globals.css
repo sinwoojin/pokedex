@@ -104,6 +104,26 @@ h1 {
   gap: 0.5rem;
 }
 
+.sort-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.45rem 0.6rem;
+  background: rgba(24, 49, 77, 0.7);
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.sort-wrap select {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #10263c;
+  color: var(--text);
+  padding: 0.28rem 0.45rem;
+}
+
 .search-form input {
   width: min(300px, 72vw);
   border: 1px solid var(--line);

@@ -15,6 +15,7 @@ import type {
   PokemonSpeciesResponse,
   PokemonWeakness
 } from "@/types/pokemon";
+import type { SortOrder } from "@/stores/pokedex-store";
 
 const API_BASE = "https://pokeapi.co/api/v2";
 
@@ -46,11 +47,29 @@ const statNameMap: Record<string, string> = {
 const typeDetailCache = new Map<string, Promise<PokemonApiTypeDetail>>();
 const abilityDetailCache = new Map<string, Promise<PokemonAbilityResponse>>();
 const speciesDetailCache = new Map<string, Promise<PokemonSpeciesResponse>>();
+const pokemonCardCache = new Map<number, Promise<PokemonCard>>();
+
+type SearchIndexEntry = {
+  id: number;
+  englishName: string;
+  koreanName: string;
+};
+
+const SEARCH_INDEX_STORAGE_KEY = "pokemon-search-index-v1";
+let localizedSearchIndexPromise: Promise<SearchIndexEntry[]> | null = null;
 
 const getLocalizedFromNames = (
   names: Array<{ name: string; language: { name: string } }> | undefined,
   fallback: string
 ) => names?.find((item) => item.language.name === "ko")?.name ?? fallback;
+
+const parsePokemonIdFromUrl = (url: string): number => {
+  const id = Number(url.split("/").filter(Boolean).at(-1));
+  if (Number.isNaN(id)) {
+    throw new Error(`Invalid pokemon resource URL: ${url}`);
+  }
+  return id;
+};
 
 const fetchTypeDetail = (typeName: string) => {
   const cached = typeDetailCache.get(typeName);
@@ -98,6 +117,69 @@ const fetchSpeciesDetail = (speciesUrl: string) => {
 
   speciesDetailCache.set(speciesUrl, protectedRequest);
   return protectedRequest;
+};
+
+const buildLocalizedSearchIndex = async (): Promise<SearchIndexEntry[]> => {
+  const speciesList = await fetchJson<PokemonListResponse>(`${API_BASE}/pokemon-species?limit=2000&offset=0`);
+
+  const entries = await Promise.all(
+    speciesList.results.map(async (speciesItem) => {
+      const species = await fetchSpeciesDetail(speciesItem.url);
+      return {
+        id: parsePokemonIdFromUrl(speciesItem.url),
+        englishName: speciesItem.name.toLowerCase(),
+        koreanName: getLocalizedFromNames(species.names, formatName(speciesItem.name))
+      };
+    })
+  );
+
+  return entries.sort((a, b) => a.id - b.id);
+};
+
+const readSearchIndexFromStorage = (): SearchIndexEntry[] | null => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const raw = window.localStorage.getItem(SEARCH_INDEX_STORAGE_KEY);
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(raw) as SearchIndexEntry[];
+  } catch {
+    window.localStorage.removeItem(SEARCH_INDEX_STORAGE_KEY);
+    return null;
+  }
+};
+
+const writeSearchIndexToStorage = (entries: SearchIndexEntry[]) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.localStorage.setItem(SEARCH_INDEX_STORAGE_KEY, JSON.stringify(entries));
+};
+
+const getLocalizedSearchIndex = async (): Promise<SearchIndexEntry[]> => {
+  const cachedStorage = readSearchIndexFromStorage();
+  if (cachedStorage) {
+    return cachedStorage;
+  }
+
+  if (!localizedSearchIndexPromise) {
+    localizedSearchIndexPromise = buildLocalizedSearchIndex()
+      .then((entries) => {
+        writeSearchIndexToStorage(entries);
+        return entries;
+      })
+      .catch((error) => {
+        localizedSearchIndexPromise = null;
+        throw error;
+      });
+  }
+
+  return localizedSearchIndexPromise;
 };
 
 const collectEvolutionSpeciesUrls = (
@@ -200,6 +282,22 @@ export const toPokemonCard = async (detail: PokemonApiDetail): Promise<PokemonCa
   };
 };
 
+const fetchPokemonCardById = (id: number) => {
+  const cached = pokemonCardCache.get(id);
+  if (cached) {
+    return cached;
+  }
+
+  const request = fetchJson<PokemonApiDetail>(`${API_BASE}/pokemon/${id}`).then((detail) => toPokemonCard(detail));
+  const protectedRequest = request.catch((error) => {
+    pokemonCardCache.delete(id);
+    throw error;
+  });
+
+  pokemonCardCache.set(id, protectedRequest);
+  return protectedRequest;
+};
+
 const fetchJson = async <T>(url: string): Promise<T> => {
   const response = await fetch(url, { cache: "no-store" });
   if (!response.ok) {
@@ -213,17 +311,69 @@ export const fetchPokemonByNameOrId = async (query: string): Promise<PokemonCard
   return await toPokemonCard(detail);
 };
 
+export const fetchPokemonByQuery = async (
+  query: string,
+  sortOrder: SortOrder
+): Promise<PokemonCard[]> => {
+  const trimmed = query.trim();
+  if (!trimmed) {
+    return [];
+  }
+
+  if (/^\d+$/.test(trimmed)) {
+    try {
+      return [await fetchPokemonByNameOrId(trimmed)];
+    } catch (error) {
+      if (error instanceof PokemonApiError && error.status === 404) {
+        return [];
+      }
+      throw error;
+    }
+  }
+
+  const normalizedEnglish = trimmed.toLowerCase();
+  const localizedIndex = await getLocalizedSearchIndex();
+
+  const matchedEntries = localizedIndex.filter(
+    (entry) => entry.koreanName.includes(trimmed) || entry.englishName.includes(normalizedEnglish)
+  );
+
+  if (!matchedEntries.length) {
+    return [];
+  }
+
+  const sortedMatches = [...matchedEntries].sort((a, b) =>
+    sortOrder === "asc" ? a.id - b.id : b.id - a.id
+  );
+
+  return await Promise.all(sortedMatches.map((entry) => fetchPokemonCardById(entry.id)));
+};
+
 export const fetchPokemonPage = async (
   page: number,
-  limit: number
+  limit: number,
+  sortOrder: SortOrder
 ): Promise<{ cards: PokemonCard[]; total: number }> => {
-  const offset = (page - 1) * limit;
-  const list = await fetchJson<PokemonListResponse>(`${API_BASE}/pokemon?limit=${limit}&offset=${offset}`);
-  const details = await Promise.all(list.results.map((item) => fetchJson<PokemonApiDetail>(item.url)));
-  const cards = await Promise.all(details.map((detail) => toPokemonCard(detail)));
+  const totalCountResponse = await fetchJson<PokemonListResponse>(`${API_BASE}/pokemon?limit=1&offset=0`);
+  const total = totalCountResponse.count;
+  const totalPages = Math.max(Math.ceil(total / limit), 1);
+  const safePage = Math.min(Math.max(page, 1), totalPages);
+
+  let offset = (safePage - 1) * limit;
+  let pageLimit = limit;
+
+  if (sortOrder === "desc") {
+    pageLimit = Math.min(limit, total - (safePage - 1) * limit);
+    offset = Math.max(total - (safePage - 1) * limit - pageLimit, 0);
+  }
+
+  const list = await fetchJson<PokemonListResponse>(`${API_BASE}/pokemon?limit=${pageLimit}&offset=${offset}`);
+  const ids = list.results.map((item) => parsePokemonIdFromUrl(item.url));
+  const orderedIds = sortOrder === "desc" ? [...ids].reverse() : ids;
+  const cards = await Promise.all(orderedIds.map((id) => fetchPokemonCardById(id)));
 
   return {
     cards,
-    total: list.count
+    total
   };
 };
