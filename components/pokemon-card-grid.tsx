@@ -1,6 +1,7 @@
 "use client";
 
 import { fetchPokemonByNameOrId, fetchPokemonPage } from "@/lib/pokemon";
+import { getTypeColor } from "@/lib/pokemon-colors";
 import { usePokedexStore } from "@/providers/pokedex-store-provider";
 import { PAGE_SIZE } from "@/stores/pokedex-store";
 import type { PokemonCard } from "@/types/pokemon";
@@ -127,6 +128,7 @@ export function PokemonCardGrid() {
                   className="card card-button"
                   onClick={() => setSelected(pokemon)}
                   aria-label={`${pokemon.name} 카드 상세 보기`}
+                  style={{ borderColor: pokemon.representativeColor }}
                 >
                   <span className="id">#{pokemon.id.toString().padStart(4, "0")}</span>
                   {pokemon.imageUrl ? (
@@ -137,9 +139,15 @@ export function PokemonCardGrid() {
                   <h2>{pokemon.name}</h2>
                   <ul className="type-list">
                     {pokemon.types.map((type) => (
-                      <li key={type}>{type}</li>
+                      <li key={type} style={{ borderColor: getTypeColor(type), color: getTypeColor(type) }}>
+                        {type}
+                      </li>
                     ))}
                   </ul>
+                  <p className="rep-color-label">
+                    대표색: <span className="swatch" style={{ background: pokemon.representativeColor }} />
+                    {pokemon.speciesColor}
+                  </p>
                   <dl className="meta">
                     <div>
                       <dt>Height</dt>
@@ -177,7 +185,20 @@ export function PokemonCardGrid() {
               <h4>Types</h4>
               <ul className="type-list">
                 {selected.types.map((type) => (
-                  <li key={type}>{type}</li>
+                  <li key={type} style={{ borderColor: getTypeColor(type), color: getTypeColor(type) }}>
+                    {type}
+                  </li>
+                ))}
+              </ul>
+            </section>
+
+            <section className="modal-section">
+              <h4>Weakness</h4>
+              <ul className="ability-list">
+                {selected.weaknesses.map((weakness) => (
+                  <li key={weakness.name} style={{ borderColor: weakness.color, color: weakness.color }}>
+                    {weakness.name} x{weakness.multiplier}
+                  </li>
                 ))}
               </ul>
             </section>

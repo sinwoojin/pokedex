@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { PokemonCardGrid } from "@/components/pokemon-card-grid";
 import { PokedexStoreProvider } from "@/providers/pokedex-store-provider";
+import type { PokemonCard } from "@/types/pokemon";
 import type { ComponentProps } from "react";
 import type Image from "next/image";
 
@@ -34,6 +35,9 @@ describe("PokemonCardGrid", () => {
           height: 4,
           weight: 60,
           abilities: ["Static", "Lightning Rod"],
+          speciesColor: "yellow",
+          representativeColor: "#E9C84A",
+          weaknesses: [{ name: "ground", color: "#E2BF65", multiplier: 2 }],
           stats: [{ name: "hp", value: 35 }]
         }
       ]
@@ -51,10 +55,11 @@ describe("PokemonCardGrid", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByText("Abilities")).toBeInTheDocument();
     expect(screen.getByText("Lightning Rod")).toBeInTheDocument();
+    expect(screen.getByText("ground x2")).toBeInTheDocument();
   });
 
   it("shows skeleton cards while loading", () => {
-    const pendingPromise = new Promise<{ cards: never[]; total: number }>(() => undefined);
+    const pendingPromise = new Promise<{ cards: PokemonCard[]; total: number }>(() => undefined);
     mockedFetchPokemonPage.mockReturnValue(pendingPromise);
 
     render(

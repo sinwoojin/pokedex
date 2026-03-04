@@ -13,6 +13,17 @@ export type PokemonApiType = {
   };
 };
 
+export type PokemonApiDamageRelations = {
+  double_damage_from: Array<{ name: string; url: string }>;
+  half_damage_from: Array<{ name: string; url: string }>;
+  no_damage_from: Array<{ name: string; url: string }>;
+};
+
+export type PokemonApiTypeDetail = {
+  name: string;
+  damage_relations: PokemonApiDamageRelations;
+};
+
 export type PokemonApiStat = {
   base_stat: number;
   stat: {
@@ -46,6 +57,23 @@ export type PokemonApiDetail = {
   abilities: PokemonApiAbility[];
   stats: PokemonApiStat[];
   sprites: PokemonApiSprite;
+  species: {
+    name: string;
+    url: string;
+  };
+};
+
+export type PokemonSpeciesResponse = {
+  color: {
+    name: string;
+    url: string;
+  };
+};
+
+export type PokemonWeakness = {
+  name: string;
+  color: string;
+  multiplier: number;
 };
 
 export type PokemonCard = {
@@ -56,5 +84,8 @@ export type PokemonCard = {
   height: number;
   weight: number;
   abilities: string[];
+  speciesColor: string;
+  representativeColor: string;
+  weaknesses: PokemonWeakness[];
   stats: Array<{ name: string; value: number }>;
 };
