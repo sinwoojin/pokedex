@@ -1,0 +1,213 @@
+"use client";
+
+import { fetchPokemonByNameOrId, fetchPokemonPage } from "@/lib/pokemon";
+import { usePokedexStore } from "@/providers/pokedex-store-provider";
+import { PAGE_SIZE } from "@/stores/pokedex-store";
+import type { PokemonCard } from "@/types/pokemon";
+import Image from "next/image";
+import { useEffect, useMemo, useState } from "react";
+
+export function PokemonCardGrid() {
+  const query = usePokedexStore((store) => store.query);
+  const page = usePokedexStore((store) => store.page);
+  const setPage = usePokedexStore((store) => store.setPage);
+  const nextPage = usePokedexStore((store) => store.nextPage);
+  const prevPage = usePokedexStore((store) => store.prevPage);
+
+  const [cards, setCards] = useState<PokemonCard[]>([]);
+  const [selected, setSelected] = useState<PokemonCard | null>(null);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    setLoading(true);
+    setError(null);
+
+    const run = async () => {
+      try {
+        if (query) {
+          const one = await fetchPokemonByNameOrId(query);
+          if (!isMounted) {
+            return;
+          }
+          setCards([one]);
+          setTotal(1);
+        } else {
+          const result = await fetchPokemonPage(page, PAGE_SIZE);
+          if (!isMounted) {
+            return;
+          }
+          setCards(result.cards);
+          setTotal(result.total);
+        }
+      } catch {
+        if (!isMounted) {
+          return;
+        }
+        setError("포켓몬을 찾을 수 없습니다. 이름 또는 번호를 확인해주세요.");
+        setCards([]);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    run();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [page, query, setPage]);
+
+  const maxPage = useMemo(() => {
+    if (query) {
+      return 1;
+    }
+    return Math.max(Math.ceil(total / PAGE_SIZE), 1);
+  }, [query, total]);
+
+  const canPrev = !query && page > 1;
+  const canNext = !query && page < maxPage;
+
+  return (
+    <section>
+      <div className="status-row">
+        <p>{query ? "검색 결과" : `전체 ${total.toLocaleString()}마리`}</p>
+        <p>{query ? "1 / 1" : `${page} / ${maxPage}`}</p>
+      </div>
+
+      {!query && (
+        <div className="pager">
+          <button
+            type="button"
+            className="ghost"
+            disabled={!canPrev}
+            onClick={prevPage}
+          >
+            이전
+          </button>
+          <button
+            type="button"
+            className="ghost"
+            disabled={!canNext}
+            onClick={nextPage}
+          >
+            다음
+          </button>
+        </div>
+      )}
+
+      {error && <p className="message error">{error}</p>}
+
+      {!error && (
+        <div className="grid">
+          {loading
+            ? Array.from({ length: query ? 1 : PAGE_SIZE }).map((_, index) => (
+                <article key={`skeleton-${index}`} className="card skeleton" data-testid="pokemon-skeleton">
+                  <div className="skeleton-line skeleton-id" />
+                  <div className="skeleton-image" />
+                  <div className="skeleton-line skeleton-title" />
+                  <div className="skeleton-chip-row">
+                    <div className="skeleton-chip" />
+                    <div className="skeleton-chip" />
+                  </div>
+                  <div className="skeleton-meta-row">
+                    <div className="skeleton-meta" />
+                    <div className="skeleton-meta" />
+                  </div>
+                </article>
+              ))
+            : cards.map((pokemon) => (
+                <button
+                  key={pokemon.id}
+                  type="button"
+                  className="card card-button"
+                  onClick={() => setSelected(pokemon)}
+                  aria-label={`${pokemon.name} 카드 상세 보기`}
+                >
+                  <span className="id">#{pokemon.id.toString().padStart(4, "0")}</span>
+                  {pokemon.imageUrl ? (
+                    <Image src={pokemon.imageUrl} alt={pokemon.name} width={220} height={220} unoptimized />
+                  ) : (
+                    <div className="image-fallback">No Artwork</div>
+                  )}
+                  <h2>{pokemon.name}</h2>
+                  <ul className="type-list">
+                    {pokemon.types.map((type) => (
+                      <li key={type}>{type}</li>
+                    ))}
+                  </ul>
+                  <dl className="meta">
+                    <div>
+                      <dt>Height</dt>
+                      <dd>{pokemon.height}</dd>
+                    </div>
+                    <div>
+                      <dt>Weight</dt>
+                      <dd>{pokemon.weight}</dd>
+                    </div>
+                  </dl>
+                </button>
+              ))}
+        </div>
+      )}
+
+      {selected && (
+        <div className="modal-backdrop" role="presentation" onClick={() => setSelected(null)}>
+          <article className="modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+            <button type="button" className="ghost close-modal" onClick={() => setSelected(null)}>
+              닫기
+            </button>
+            <div className="modal-header">
+              <div>
+                <p className="id">#{selected.id.toString().padStart(4, "0")}</p>
+                <h3>{selected.name}</h3>
+              </div>
+              {selected.imageUrl ? (
+                <Image src={selected.imageUrl} alt={selected.name} width={180} height={180} unoptimized />
+              ) : (
+                <div className="image-fallback modal-fallback">No Artwork</div>
+              )}
+            </div>
+
+            <section className="modal-section">
+              <h4>Types</h4>
+              <ul className="type-list">
+                {selected.types.map((type) => (
+                  <li key={type}>{type}</li>
+                ))}
+              </ul>
+            </section>
+
+            <section className="modal-section">
+              <h4>Abilities</h4>
+              <ul className="ability-list">
+                {selected.abilities.map((ability) => (
+                  <li key={ability}>{ability}</li>
+                ))}
+              </ul>
+            </section>
+
+            <section className="modal-section">
+              <h4>Stats</h4>
+              <ul className="stats-list">
+                {selected.stats.map((stat) => (
+                  <li key={stat.name}>
+                    <span>{stat.name}</span>
+                    <div>
+                      <strong>{stat.value}</strong>
+                      <progress max={255} value={stat.value} />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          </article>
+        </div>
+      )}
+    </section>
+  );
+}

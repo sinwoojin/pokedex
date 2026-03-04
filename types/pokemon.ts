@@ -1,0 +1,60 @@
+export type PokemonListResponse = {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: Array<{ name: string; url: string }>;
+};
+
+export type PokemonApiType = {
+  slot: number;
+  type: {
+    name: string;
+    url: string;
+  };
+};
+
+export type PokemonApiStat = {
+  base_stat: number;
+  stat: {
+    name: string;
+    url: string;
+  };
+};
+
+export type PokemonApiSprite = {
+  front_default: string | null;
+  other?: {
+    "official-artwork"?: {
+      front_default: string | null;
+    };
+  };
+};
+
+export type PokemonApiAbility = {
+  ability: {
+    name: string;
+    url: string;
+  };
+};
+
+export type PokemonApiDetail = {
+  id: number;
+  name: string;
+  height: number;
+  weight: number;
+  types: PokemonApiType[];
+  abilities: PokemonApiAbility[];
+  stats: PokemonApiStat[];
+  sprites: PokemonApiSprite;
+};
+
+export type PokemonCard = {
+  id: number;
+  name: string;
+  imageUrl: string | null;
+  types: string[];
+  height: number;
+  weight: number;
+  abilities: string[];
+  stats: Array<{ name: string; value: number }>;
+};
