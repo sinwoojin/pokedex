@@ -29,16 +29,16 @@ describe("PokemonCardGrid", () => {
       cards: [
         {
           id: 25,
-          name: "Pikachu",
+          name: "피카츄",
           imageUrl: "https://example.com/pikachu.png",
-          types: ["electric"],
+          types: ["전기"],
           height: 4,
           weight: 60,
-          abilities: ["Static", "Lightning Rod"],
-          speciesColor: "yellow",
+          abilities: ["정전기", "피뢰침"],
+          speciesColor: "노랑",
           representativeColor: "#E9C84A",
-          weaknesses: [{ name: "ground", color: "#E2BF65", multiplier: 2 }],
-          stats: [{ name: "hp", value: 35 }]
+          weaknesses: [{ name: "땅", color: "#E2BF65", multiplier: 2 }],
+          stats: [{ name: "HP", value: 35 }]
         }
       ]
     });
@@ -49,13 +49,13 @@ describe("PokemonCardGrid", () => {
       </PokedexStoreProvider>
     );
 
-    await waitFor(() => expect(screen.getByText("Pikachu")).toBeInTheDocument());
-    await userEvent.click(screen.getByRole("button", { name: "Pikachu 카드 상세 보기" }));
+    await waitFor(() => expect(screen.getByText("피카츄")).toBeInTheDocument());
+    await userEvent.click(screen.getByRole("button", { name: "피카츄 카드 상세 보기" }));
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByText("Abilities")).toBeInTheDocument();
-    expect(screen.getByText("Lightning Rod")).toBeInTheDocument();
-    expect(screen.getByText("ground x2")).toBeInTheDocument();
+    expect(screen.getByText("특성")).toBeInTheDocument();
+    expect(screen.getByText("피뢰침")).toBeInTheDocument();
+    expect(screen.getByText("땅 x2")).toBeInTheDocument();
   });
 
   it("shows skeleton cards while loading", () => {

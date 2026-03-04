@@ -11,7 +11,6 @@ import { useEffect, useMemo, useState } from "react";
 export function PokemonCardGrid() {
   const query = usePokedexStore((store) => store.query);
   const page = usePokedexStore((store) => store.page);
-  const setPage = usePokedexStore((store) => store.setPage);
   const nextPage = usePokedexStore((store) => store.nextPage);
   const prevPage = usePokedexStore((store) => store.prevPage);
 
@@ -61,7 +60,7 @@ export function PokemonCardGrid() {
     return () => {
       isMounted = false;
     };
-  }, [page, query, setPage]);
+  }, [page, query]);
 
   const maxPage = useMemo(() => {
     if (query) {
@@ -134,7 +133,7 @@ export function PokemonCardGrid() {
                   {pokemon.imageUrl ? (
                     <Image src={pokemon.imageUrl} alt={pokemon.name} width={220} height={220} unoptimized />
                   ) : (
-                    <div className="image-fallback">No Artwork</div>
+                    <div className="image-fallback">이미지 없음</div>
                   )}
                   <h2>{pokemon.name}</h2>
                   <ul className="type-list">
@@ -150,11 +149,11 @@ export function PokemonCardGrid() {
                   </p>
                   <dl className="meta">
                     <div>
-                      <dt>Height</dt>
+                      <dt>키</dt>
                       <dd>{pokemon.height}</dd>
                     </div>
                     <div>
-                      <dt>Weight</dt>
+                      <dt>몸무게</dt>
                       <dd>{pokemon.weight}</dd>
                     </div>
                   </dl>
@@ -177,12 +176,12 @@ export function PokemonCardGrid() {
               {selected.imageUrl ? (
                 <Image src={selected.imageUrl} alt={selected.name} width={180} height={180} unoptimized />
               ) : (
-                <div className="image-fallback modal-fallback">No Artwork</div>
+                <div className="image-fallback modal-fallback">이미지 없음</div>
               )}
             </div>
 
             <section className="modal-section">
-              <h4>Types</h4>
+              <h4>타입</h4>
               <ul className="type-list">
                 {selected.types.map((type) => (
                   <li key={type} style={{ borderColor: getTypeColor(type), color: getTypeColor(type) }}>
@@ -193,7 +192,7 @@ export function PokemonCardGrid() {
             </section>
 
             <section className="modal-section">
-              <h4>Weakness</h4>
+              <h4>약점 타입</h4>
               <ul className="ability-list">
                 {selected.weaknesses.map((weakness) => (
                   <li key={weakness.name} style={{ borderColor: weakness.color, color: weakness.color }}>
@@ -204,7 +203,7 @@ export function PokemonCardGrid() {
             </section>
 
             <section className="modal-section">
-              <h4>Abilities</h4>
+              <h4>특성</h4>
               <ul className="ability-list">
                 {selected.abilities.map((ability) => (
                   <li key={ability}>{ability}</li>
@@ -213,7 +212,7 @@ export function PokemonCardGrid() {
             </section>
 
             <section className="modal-section">
-              <h4>Stats</h4>
+              <h4>능력치</h4>
               <ul className="stats-list">
                 {selected.stats.map((stat) => (
                   <li key={stat.name}>

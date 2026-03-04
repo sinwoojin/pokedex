@@ -9,7 +9,7 @@ describe("toPokemonCard", () => {
       height: 4,
       weight: 60,
       types: [{ slot: 1, type: { name: "electric", url: "" } }],
-      abilities: [{ ability: { name: "static", url: "" } }],
+      abilities: [{ ability: { name: "static", url: "https://pokeapi.co/api/v2/ability/9/" } }],
       stats: [{ base_stat: 35, stat: { name: "hp", url: "" } }],
       sprites: {
         front_default: "https://example.com/front.png",
@@ -28,7 +28,10 @@ describe("toPokemonCard", () => {
       if (url.includes("pokemon-species")) {
         return {
           ok: true,
-          json: async () => ({ color: { name: "yellow", url: "" } })
+          json: async () => ({
+            names: [{ name: "피카츄", language: { name: "ko", url: "" } }],
+            color: { name: "yellow", url: "" }
+          })
         } as Response;
       }
       if (url.includes("/type/electric")) {
@@ -36,12 +39,19 @@ describe("toPokemonCard", () => {
           ok: true,
           json: async () => ({
             name: "electric",
+            names: [{ name: "전기", language: { name: "ko", url: "" } }],
             damage_relations: {
               double_damage_from: [{ name: "ground", url: "" }],
               half_damage_from: [{ name: "electric", url: "" }, { name: "flying", url: "" }, { name: "steel", url: "" }],
               no_damage_from: []
             }
           })
+        } as Response;
+      }
+      if (url.includes("ability")) {
+        return {
+          ok: true,
+          json: async () => ({ names: [{ name: "정전기", language: { name: "ko", url: "" } }] })
         } as Response;
       }
 
@@ -59,16 +69,16 @@ describe("toPokemonCard", () => {
 
     await expect(toPokemonCard(detail)).resolves.toEqual({
       id: 25,
-      name: "Pikachu",
+      name: "피카츄",
       imageUrl: "https://example.com/official.png",
-      types: ["electric"],
+      types: ["전기"],
       height: 4,
       weight: 60,
-      abilities: ["Static"],
-      speciesColor: "yellow",
+      abilities: ["정전기"],
+      speciesColor: "노랑",
       representativeColor: "#E9C84A",
-      weaknesses: [{ name: "ground", multiplier: 2, color: "#E2BF65" }],
-      stats: [{ name: "hp", value: 35 }]
+      weaknesses: [{ name: "땅", multiplier: 2, color: "#E2BF65" }],
+      stats: [{ name: "HP", value: 35 }]
     });
 
     Object.defineProperty(globalThis, "fetch", {

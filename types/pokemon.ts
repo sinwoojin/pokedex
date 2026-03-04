@@ -21,6 +21,13 @@ export type PokemonApiDamageRelations = {
 
 export type PokemonApiTypeDetail = {
   name: string;
+  names: Array<{
+    name: string;
+    language: {
+      name: string;
+      url: string;
+    };
+  }>;
   damage_relations: PokemonApiDamageRelations;
 };
 
@@ -64,10 +71,27 @@ export type PokemonApiDetail = {
 };
 
 export type PokemonSpeciesResponse = {
+  names: Array<{
+    name: string;
+    language: {
+      name: string;
+      url: string;
+    };
+  }>;
   color: {
     name: string;
     url: string;
   };
+};
+
+export type PokemonAbilityResponse = {
+  names: Array<{
+    name: string;
+    language: {
+      name: string;
+      url: string;
+    };
+  }>;
 };
 
 export type PokemonWeakness = {

@@ -1,5 +1,12 @@
-import { allKnownTypes, getSpeciesColor, getTypeColor } from "@/lib/pokemon-colors";
+import {
+  allKnownTypes,
+  getKoreanSpeciesColorName,
+  getKoreanTypeName,
+  getSpeciesColor,
+  getTypeColor
+} from "@/lib/pokemon-colors";
 import type {
+  PokemonAbilityResponse,
   PokemonApiDetail,
   PokemonApiTypeDetail,
   PokemonCard,
@@ -16,7 +23,22 @@ const formatName = (name: string) =>
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
 
+const statNameMap: Record<string, string> = {
+  hp: "HP",
+  attack: "공격",
+  defense: "방어",
+  "special-attack": "특수공격",
+  "special-defense": "특수방어",
+  speed: "스피드"
+};
+
 const typeDetailCache = new Map<string, Promise<PokemonApiTypeDetail>>();
+const abilityDetailCache = new Map<string, Promise<PokemonAbilityResponse>>();
+
+const getLocalizedFromNames = (
+  names: Array<{ name: string; language: { name: string } }> | undefined,
+  fallback: string
+) => names?.find((item) => item.language.name === "ko")?.name ?? fallback;
 
 const fetchTypeDetail = (typeName: string) => {
   const cached = typeDetailCache.get(typeName);
@@ -26,6 +48,17 @@ const fetchTypeDetail = (typeName: string) => {
 
   const request = fetchJson<PokemonApiTypeDetail>(`${API_BASE}/type/${typeName}`);
   typeDetailCache.set(typeName, request);
+  return request;
+};
+
+const fetchAbilityDetail = (abilityUrl: string) => {
+  const cached = abilityDetailCache.get(abilityUrl);
+  if (cached) {
+    return cached;
+  }
+
+  const request = fetchJson<PokemonAbilityResponse>(abilityUrl);
+  abilityDetailCache.set(abilityUrl, request);
   return request;
 };
 
@@ -56,33 +89,47 @@ const resolveWeaknesses = async (types: string[]): Promise<PokemonWeakness[]> =>
   return Array.from(multipliers.entries())
     .filter(([, multiplier]) => multiplier > 1)
     .sort((a, b) => b[1] - a[1])
-    .map(([name, multiplier]) => ({
-      name,
+    .map(([englishName, multiplier]) => ({
+      name: getKoreanTypeName(englishName),
       multiplier,
-      color: getTypeColor(name)
+      color: getTypeColor(englishName)
     }));
 };
 
 export const toPokemonCard = async (detail: PokemonApiDetail): Promise<PokemonCard> => {
   const imageUrl =
     detail.sprites.other?.["official-artwork"]?.front_default ?? detail.sprites.front_default ?? null;
-  const typeNames = detail.types.map((item) => item.type.name);
+  const typeEnglishNames = detail.types.map((item) => item.type.name);
   const species = await fetchJson<PokemonSpeciesResponse>(detail.species.url);
+  const abilityDetails = await Promise.all(
+    detail.abilities.map((ability) => fetchAbilityDetail(ability.ability.url))
+  );
+  const localizedAbilities = abilityDetails.map((ability, index) => {
+    const fallback = formatName(detail.abilities[index]?.ability.name ?? "");
+    return getLocalizedFromNames(ability.names, fallback);
+  });
+
+  const localizedPokemonName = getLocalizedFromNames(species.names, formatName(detail.name));
   const representativeColor = getSpeciesColor(species.color.name);
-  const weaknesses = await resolveWeaknesses(typeNames);
+  const weaknesses = await resolveWeaknesses(typeEnglishNames);
+  const localizedTypes = typeEnglishNames.map((name) => getKoreanTypeName(name));
+  const localizedSpeciesColor = getKoreanSpeciesColorName(species.color.name);
 
   return {
     id: detail.id,
-    name: formatName(detail.name),
+    name: localizedPokemonName,
     imageUrl,
-    types: typeNames,
+    types: localizedTypes,
     height: detail.height,
     weight: detail.weight,
-    abilities: detail.abilities.map((item) => formatName(item.ability.name)),
-    speciesColor: species.color.name,
+    abilities: localizedAbilities,
+    speciesColor: localizedSpeciesColor,
     representativeColor,
     weaknesses,
-    stats: detail.stats.map((item) => ({ name: item.stat.name, value: item.base_stat }))
+    stats: detail.stats.map((item) => ({
+      name: statNameMap[item.stat.name] ?? item.stat.name,
+      value: item.base_stat
+    }))
   };
 };
 
