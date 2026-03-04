@@ -1,15 +1,16 @@
 "use client";
 
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchPokemonByNameOrId, fetchPokemonPage, PokemonApiError } from "@/lib/pokemon";
 import { getTypeColor } from "@/lib/pokemon-colors";
 import { usePokedexStore } from "@/providers/pokedex-store-provider";
 import { PAGE_SIZE } from "@/stores/pokedex-store";
 import type { PokemonCard } from "@/types/pokemon";
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export function PokemonCardGrid() {
+  const queryClient = useQueryClient();
   const query = usePokedexStore((store) => store.query);
   const page = usePokedexStore((store) => store.page);
   const nextPage = usePokedexStore((store) => store.nextPage);
@@ -51,6 +52,7 @@ export function PokemonCardGrid() {
 
   const total = query ? (searchQuery.data ? 1 : 0) : pageQuery.data?.total ?? 0;
   const loading = query ? searchQuery.isPending : pageQuery.isPending;
+  const isPageTransitionLoading = !query && pageQuery.isFetching;
   const currentError = query ? searchQuery.error : pageQuery.error;
   const error = resolveErrorMessage(currentError, Boolean(query));
 
@@ -64,6 +66,32 @@ export function PokemonCardGrid() {
   const canPrev = !query && page > 1;
   const canNext = !query && page < maxPage;
 
+  useEffect(() => {
+    if (query || !pageQuery.data || page >= maxPage) {
+      return;
+    }
+
+    const nextPageNumber = page + 1;
+    void queryClient.prefetchQuery({
+      queryKey: ["pokemon-page", nextPageNumber, PAGE_SIZE],
+      queryFn: () => fetchPokemonPage(nextPageNumber, PAGE_SIZE)
+    });
+  }, [maxPage, page, pageQuery.data, query, queryClient]);
+
+  const handlePrev = () => {
+    if (isPageTransitionLoading) {
+      return;
+    }
+    prevPage();
+  };
+
+  const handleNext = () => {
+    if (isPageTransitionLoading) {
+      return;
+    }
+    nextPage();
+  };
+
   return (
     <section>
       <div className="status-row">
@@ -76,21 +104,23 @@ export function PokemonCardGrid() {
           <button
             type="button"
             className="ghost"
-            disabled={!canPrev}
-            onClick={prevPage}
+            disabled={!canPrev || isPageTransitionLoading}
+            onClick={handlePrev}
           >
             이전
           </button>
           <button
             type="button"
             className="ghost"
-            disabled={!canNext}
-            onClick={nextPage}
+            disabled={!canNext || isPageTransitionLoading}
+            onClick={handleNext}
           >
             다음
           </button>
         </div>
       )}
+
+      {isPageTransitionLoading && <p className="page-loading-hint">페이지 불러오는 중...</p>}
 
       {error && <p className="message error">{error}</p>}
 

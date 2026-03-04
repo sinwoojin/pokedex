@@ -41,7 +41,7 @@ const renderWithProviders = (ui: ReactNode) => {
 
 describe("PokemonCardGrid", () => {
   it("opens detail modal when card is clicked", async () => {
-    mockedFetchPokemonPage.mockResolvedValueOnce({
+    const sampleResponse = {
       total: 1302,
       cards: [
         {
@@ -58,7 +58,9 @@ describe("PokemonCardGrid", () => {
           stats: [{ name: "HP", value: 35 }]
         }
       ]
-    });
+    };
+
+    mockedFetchPokemonPage.mockResolvedValue(sampleResponse);
 
     renderWithProviders(<PokemonCardGrid />);
 
