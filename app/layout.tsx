@@ -1,3 +1,4 @@
+import { GoogleAnalytics } from "@next/third-parties/google";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
@@ -66,10 +67,14 @@ type RootLayoutProps = {
   children: ReactNode;
 };
 
+const gaMeasurementId =
+  process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ?? process.env.NEXT_PUBLIC_GA_ID;
+
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="ko">
       <body>{children}</body>
+      {gaMeasurementId ? <GoogleAnalytics gaId={gaMeasurementId} /> : null}
     </html>
   );
 }
