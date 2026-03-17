@@ -185,6 +185,9 @@ button:disabled {
 }
 
 .card {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
   border: 1px solid var(--line);
   border-radius: 18px;
   padding: 0.85rem;
@@ -195,6 +198,44 @@ button:disabled {
   );
 }
 
+.card:not(.skeleton)::before {
+  content: "";
+  position: absolute;
+  inset: -45%;
+  z-index: -1;
+  background: conic-gradient(
+    from 180deg,
+    rgba(255, 110, 190, 0.16),
+    rgba(110, 185, 255, 0.18),
+    rgba(150, 255, 190, 0.14),
+    rgba(255, 220, 130, 0.16),
+    rgba(255, 110, 190, 0.16)
+  );
+  opacity: 0.85;
+  transform: rotate(8deg);
+  animation: holoSpin 8.5s linear infinite;
+}
+
+.card:not(.skeleton)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    linear-gradient(120deg, rgba(255, 255, 255, 0) 25%, rgba(255, 255, 255, 0.28) 40%, rgba(255, 255, 255, 0) 55%),
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.08) 0px,
+      rgba(255, 255, 255, 0.08) 1px,
+      rgba(255, 255, 255, 0.02) 1px,
+      rgba(255, 255, 255, 0.02) 3px
+    );
+  mix-blend-mode: screen;
+  opacity: 0.24;
+  transition: opacity 0.25s ease;
+}
+
 .card-button {
   display: block;
   width: 100%;
@@ -203,7 +244,11 @@ button:disabled {
 }
 
 .card-button:hover {
-  transform: translateY(-2px);
+  transform: translateY(-2px) scale(1.01);
+}
+
+.card-button:hover::after {
+  opacity: 0.4;
 }
 
 .card img {
@@ -507,6 +552,15 @@ button:disabled {
   }
   to {
     background-position: -20% 0;
+  }
+}
+
+@keyframes holoSpin {
+  from {
+    transform: rotate(8deg) translateX(-4%);
+  }
+  to {
+    transform: rotate(368deg) translateX(4%);
   }
 }
 
