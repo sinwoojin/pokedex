@@ -377,3 +377,8 @@ export const fetchPokemonPage = async (
     total
   };
 };
+
+export const fetchPokemonTotalCount = async (): Promise<number> => {
+  const totalCountResponse = await fetchJson<PokemonListResponse>(`${API_BASE}/pokemon?limit=1&offset=0`);
+  return totalCountResponse.count;
+};

@@ -17,13 +17,13 @@ jest.mock("next/image", () => ({
 
 jest.mock("@/lib/pokemon", () => ({
   fetchPokemonByQuery: jest.fn(),
-  fetchPokemonPage: jest.fn()
+  fetchPokemonTotalCount: jest.fn()
 }));
 
-import { fetchPokemonByQuery, fetchPokemonPage } from "@/lib/pokemon";
+import { fetchPokemonByQuery, fetchPokemonTotalCount } from "@/lib/pokemon";
 
 const mockedFetchPokemonByQuery = jest.mocked(fetchPokemonByQuery);
-const mockedFetchPokemonPage = jest.mocked(fetchPokemonPage);
+const mockedFetchPokemonTotalCount = jest.mocked(fetchPokemonTotalCount);
 
 const renderWithProviders = (ui: ReactNode, initState?: Partial<PokedexState>) => {
   const queryClient = new QueryClient({
@@ -63,7 +63,7 @@ describe("PokemonCardGrid", () => {
       ]
     };
 
-    mockedFetchPokemonPage.mockResolvedValue(sampleResponse);
+    mockedFetchPokemonTotalCount.mockResolvedValue(sampleResponse.total);
     mockedFetchPokemonByQuery.mockResolvedValue(sampleResponse.cards);
 
     renderWithProviders(<PokemonCardGrid />);
@@ -85,7 +85,7 @@ describe("PokemonCardGrid", () => {
   });
 
   it("shows skeleton cards while search result is loading", () => {
-    mockedFetchPokemonPage.mockResolvedValue({ total: 1302, cards: [] });
+    mockedFetchPokemonTotalCount.mockResolvedValue(1302);
     const pendingPromise = new Promise<{ cards: PokemonCard[]; total: number }>(() => undefined);
     mockedFetchPokemonByQuery.mockReturnValue(pendingPromise.then((value) => value.cards));
 
@@ -115,7 +115,7 @@ describe("PokemonCardGrid", () => {
       ]
     };
 
-    mockedFetchPokemonPage.mockResolvedValue(sampleResponse);
+    mockedFetchPokemonTotalCount.mockResolvedValue(sampleResponse.total);
     mockedFetchPokemonByQuery.mockResolvedValue(sampleResponse.cards);
 
     renderWithProviders(<PokemonCardGrid />);

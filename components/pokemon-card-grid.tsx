@@ -8,7 +8,7 @@ import {
   rollGachaRarity,
   type GachaRarity
 } from "@/lib/gacha";
-import { fetchPokemonByQuery, fetchPokemonPage, PokemonApiError } from "@/lib/pokemon";
+import { fetchPokemonByQuery, fetchPokemonTotalCount, PokemonApiError } from "@/lib/pokemon";
 import { getTypeColor } from "@/lib/pokemon-colors";
 import { usePokedexStore } from "@/providers/pokedex-store-provider";
 import type { PokemonCard } from "@/types/pokemon";
@@ -58,7 +58,7 @@ export function PokemonCardGrid() {
 
   const totalQuery = useQuery({
     queryKey: ["pokemon-pool-total"],
-    queryFn: () => fetchPokemonPage(1, 1, "asc")
+    queryFn: fetchPokemonTotalCount
   });
 
   const searchQuery = useQuery({
@@ -69,7 +69,10 @@ export function PokemonCardGrid() {
 
   const drawMutation = useMutation({
     mutationFn: async (): Promise<DrawResult> => {
-      const total = totalQuery.data?.total ?? 1025;
+      const total = totalQuery.data;
+      if (!total || total < 1) {
+        throw new Error("가챠 풀 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.");
+      }
       const randomPokemonId = Math.floor(Math.random() * total) + 1;
       const drawResult = await fetchPokemonByQuery(String(randomPokemonId), sortOrder);
       const drawnCard = drawResult[0];

@@ -76,6 +76,7 @@ export const createPokedexStore = (initState: Partial<PokedexState> = {}) => {
           set((currentState) => {
             const pokemonId = card.id;
             const alreadyOwned = currentState.ownedPokemonIds.includes(pokemonId);
+            const existingRarity = currentState.rarities[pokemonId];
 
             return {
               ownedPokemonIds: alreadyOwned
@@ -87,7 +88,7 @@ export const createPokedexStore = (initState: Partial<PokedexState> = {}) => {
               },
               rarities: {
                 ...currentState.rarities,
-                [pokemonId]: rarity
+                [pokemonId]: existingRarity ?? rarity
               },
               duplicateCounts: {
                 ...currentState.duplicateCounts,
