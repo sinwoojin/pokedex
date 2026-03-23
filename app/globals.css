@@ -367,6 +367,13 @@ button:disabled {
   cursor: pointer;
 }
 
+.card-detail-button:focus-visible,
+.rating-star:focus-visible,
+.gacha-button:focus-visible {
+  outline: 2px solid #f4d35e;
+  outline-offset: 3px;
+}
+
 .card-button:hover {
   transform: translateY(-2px) scale(1.01);
 }
@@ -791,5 +798,14 @@ button:disabled {
 
   .modal-main-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
