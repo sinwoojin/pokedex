@@ -1,148 +1,61 @@
 "use client";
 
-import { useMutation, useQuery } from "@tanstack/react-query";
-import {
-  getDuplicateCandyReward,
-  getGachaRarityColor,
-  getGachaRarityLabel,
-  rollGachaRarity,
-  type GachaRarity
-} from "@/lib/gacha";
-import { fetchPokemonByQuery, fetchPokemonTotalCount, PokemonApiError } from "@/lib/pokemon";
+import { useCardGridData } from "@/hooks/use-card-grid-data";
+import { usePokemonErrorMessage } from "@/hooks/use-pokemon-error-message";
+import { useGachaDraw } from "@/hooks/use-gacha-draw";
+import { usePokemonGridState } from "@/hooks/use-pokemon-grid-state";
+import { usePokemonModal } from "@/hooks/use-pokemon-modal";
+import { usePokemonRating } from "@/hooks/use-pokemon-rating";
+import { getGachaRarityColor, getGachaRarityLabel } from "@/lib/gacha";
 import { getTypeColor } from "@/lib/pokemon-colors";
-import { usePokedexStore } from "@/providers/pokedex-store-provider";
 import type { PokemonCard } from "@/types/pokemon";
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useState } from "react";
-
-type DrawResult = {
-  card: PokemonCard;
-  rarity: GachaRarity;
-  duplicateCandy: number;
-};
-
-type RevealState =
-  | { phase: "idle" }
-  | { phase: "rolling" }
-  | { phase: "revealed"; result: DrawResult };
 
 export function PokemonCardGrid() {
-  const query = usePokedexStore((store) => store.query);
-  const sortOrder = usePokedexStore((store) => store.sortOrder);
-  const ownedPokemonIds = usePokedexStore((store) => store.ownedPokemonIds);
-  const ownedCardsById = usePokedexStore((store) => store.ownedCardsById);
-  const rarities = usePokedexStore((store) => store.rarities);
-  const duplicateCounts = usePokedexStore((store) => store.duplicateCounts);
-  const ratings = usePokedexStore((store) => store.ratings);
-  const drawCount = usePokedexStore((store) => store.drawCount);
-  const candies = usePokedexStore((store) => store.candies);
-  const lastDrawnId = usePokedexStore((store) => store.lastDrawnId);
-  const lastDrawRarity = usePokedexStore((store) => store.lastDrawRarity);
-  const lastDrawWasDuplicate = usePokedexStore((store) => store.lastDrawWasDuplicate);
-  const lastCandyEarned = usePokedexStore((store) => store.lastCandyEarned);
-  const recordGachaDraw = usePokedexStore((store) => store.recordGachaDraw);
-  const setPokemonRating = usePokedexStore((store) => store.setPokemonRating);
-  const isSearchMode = Boolean(query);
+  const {
+    query,
+    sortOrder,
+    ownedPokemonIds,
+    ownedCardsById,
+    rarities,
+    duplicateCounts,
+    drawCount,
+    candies,
+    lastDrawnId,
+    lastDrawRarity,
+    lastDrawWasDuplicate,
+    lastCandyEarned
+  } = usePokemonGridState();
 
-  const [selected, setSelected] = useState<PokemonCard | null>(null);
-  const [revealState, setRevealState] = useState<RevealState>({ phase: "idle" });
-  const revealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { selected, openModal, closeModal } = usePokemonModal();
+  const { getRating, ratePokemon } = usePokemonRating();
+  const { resolveErrorMessage } = usePokemonErrorMessage();
 
-  useEffect(() => {
-    return () => {
-      if (revealTimerRef.current) {
-        clearTimeout(revealTimerRef.current);
-      }
-    };
-  }, []);
-
-  const totalQuery = useQuery({
-    queryKey: ["pokemon-pool-total"],
-    queryFn: fetchPokemonTotalCount
+  const {
+    isSearchMode,
+    cards,
+    total,
+    loading,
+    searchError
+  } = useCardGridData({
+    query,
+    sortOrder,
+    ownedPokemonIds,
+    ownedCardsById
   });
 
-  const searchQuery = useQuery({
-    queryKey: ["pokemon-search", sortOrder, query],
-    queryFn: () => fetchPokemonByQuery(query, sortOrder),
-    enabled: isSearchMode
+  const { draw, isDrawing, drawError, poolError, isPoolPending, revealState } = useGachaDraw({
+    sortOrder,
+    onDrawSuccess: openModal
   });
 
-  const drawMutation = useMutation({
-    mutationFn: async (): Promise<DrawResult> => {
-      const total = totalQuery.data;
-      if (!total || total < 1) {
-        throw new Error("가챠 풀 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.");
-      }
-      const randomPokemonId = Math.floor(Math.random() * total) + 1;
-      const drawResult = await fetchPokemonByQuery(String(randomPokemonId), sortOrder);
-      const drawnCard = drawResult[0];
-
-      if (!drawnCard) {
-        throw new Error("가챠 결과를 불러오지 못했습니다.");
-      }
-
-      const rarity = rollGachaRarity();
-
-      return {
-        card: drawnCard,
-        rarity,
-        duplicateCandy: getDuplicateCandyReward(rarity)
-      };
-    },
-    onMutate: () => {
-      if (revealTimerRef.current) {
-        clearTimeout(revealTimerRef.current);
-      }
-      setRevealState({ phase: "rolling" });
-    },
-    onSuccess: (result) => {
-      recordGachaDraw(result.card, result.rarity, result.duplicateCandy);
-      setSelected(result.card);
-      setRevealState({ phase: "revealed", result });
-
-      revealTimerRef.current = setTimeout(() => {
-        setRevealState({ phase: "idle" });
-      }, 2200);
-    },
-    onError: () => {
-      setRevealState({ phase: "idle" });
-    }
-  });
-
-  const resolveErrorMessage = (currentError: unknown, searchMode: boolean): string | null => {
-    if (!currentError) {
-      return null;
-    }
-
-    if (searchMode && currentError instanceof PokemonApiError && currentError.status === 404) {
-      return "포켓몬을 찾을 수 없습니다. 이름 또는 번호를 확인해주세요.";
-    }
-
-    return "데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.";
-  };
-
-  const collectionCards = useMemo(
-    () => ownedPokemonIds.map((id) => ownedCardsById[id]).filter((pokemon): pokemon is PokemonCard => Boolean(pokemon)),
-    [ownedPokemonIds, ownedCardsById]
-  );
-
-  const cards = useMemo(() => {
-    if (isSearchMode) {
-      return searchQuery.data ?? [];
-    }
-
-    return collectionCards;
-  }, [collectionCards, isSearchMode, searchQuery.data]);
-
-  const total = isSearchMode ? cards.length : ownedPokemonIds.length;
-  const loading = isSearchMode ? searchQuery.isPending : false;
-  const currentError = isSearchMode ? searchQuery.error : totalQuery.error;
+  const currentError = isSearchMode ? searchError : poolError;
   const error = resolveErrorMessage(currentError, isSearchMode);
-  const gachaError = drawMutation.error ? resolveErrorMessage(drawMutation.error, false) : null;
+  const gachaError = drawError ? resolveErrorMessage(drawError, false) : null;
   const lastDrawnName = lastDrawnId ? ownedCardsById[lastDrawnId]?.name ?? `No.${lastDrawnId}` : null;
 
   const renderRatingButtons = (pokemon: PokemonCard, owned: boolean) => {
-    const currentRating = ratings[pokemon.id] ?? 0;
+    const currentRating = getRating(pokemon.id);
 
     return (
       <div className="rating-row" role="group" aria-label={`${pokemon.name} 평점`}>
@@ -151,7 +64,7 @@ export function PokemonCardGrid() {
             key={`${pokemon.id}-rating-${score}`}
             type="button"
             className="rating-star"
-            onClick={() => setPokemonRating(pokemon.id, score)}
+            onClick={() => ratePokemon(pokemon.id, score)}
             disabled={!owned}
             aria-label={`${pokemon.name} ${score}점`}
             aria-pressed={currentRating === score}
@@ -175,10 +88,10 @@ export function PokemonCardGrid() {
           <button
             type="button"
             className="gacha-button"
-            onClick={() => drawMutation.mutate()}
-            disabled={drawMutation.isPending || totalQuery.isPending}
+            onClick={draw}
+            disabled={isDrawing || isPoolPending}
           >
-            {drawMutation.isPending ? "가챠 뽑는 중..." : "가챠 뽑기"}
+            {isDrawing ? "가챠 뽑는 중..." : "가챠 뽑기"}
           </button>
           <p className="gacha-meta">총 뽑기 {drawCount.toLocaleString()}회</p>
           <p className="gacha-meta">보유 캔디 {candies.toLocaleString()}개</p>
@@ -237,7 +150,7 @@ export function PokemonCardGrid() {
                       <button
                         type="button"
                         className="card-detail-button"
-                        onClick={() => setSelected(pokemon)}
+                        onClick={() => openModal(pokemon)}
                         aria-label={`${pokemon.name} 카드 상세 보기`}
                       >
                         <span className="id">#{pokemon.id.toString().padStart(4, "0")}</span>
@@ -282,9 +195,9 @@ export function PokemonCardGrid() {
       )}
 
       {selected && (
-        <div className="modal-backdrop" role="presentation" onClick={() => setSelected(null)}>
+        <div className="modal-backdrop" role="presentation" onClick={closeModal}>
           <article className="modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
-            <button type="button" className="ghost close-modal" onClick={() => setSelected(null)}>
+            <button type="button" className="ghost close-modal" onClick={closeModal}>
               닫기
             </button>
             <div className="modal-main-grid">
