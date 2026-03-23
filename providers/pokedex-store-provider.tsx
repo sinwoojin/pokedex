@@ -12,7 +12,7 @@ const PokedexStoreContext = createContext<ReturnType<typeof createPokedexStore> 
 
 type PokedexStoreProviderProps = {
   children: ReactNode;
-  initState?: PokedexState;
+  initState?: Partial<PokedexState>;
 };
 
 export function PokedexStoreProvider({ children, initState }: PokedexStoreProviderProps) {
