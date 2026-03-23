@@ -93,6 +93,13 @@ input {
   letter-spacing: 0.12em;
 }
 
+.header-subtitle {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  max-width: 32ch;
+}
+
 h1 {
   margin: 0;
   font-size: clamp(1.4rem, 2.8vw, 2.2rem);
@@ -158,12 +165,123 @@ button:disabled {
   background: rgba(255, 255, 255, 0.06);
 }
 
+.collection-shell {
+  margin-top: 1rem;
+}
+
+.collection-toolbar {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+.collection-title {
+  margin: 0;
+  font-size: clamp(1.05rem, 2vw, 1.3rem);
+  font-weight: 700;
+}
+
+.collection-count {
+  margin: 0;
+  color: var(--muted);
+}
+
+.collection-mode-hint {
+  margin: 0.5rem 0 0;
+  color: rgba(184, 200, 220, 0.85);
+  font-size: 0.9rem;
+}
+
+.gacha-panel {
+  margin-top: 0.7rem;
+  padding: 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(14, 31, 50, 0.8);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 0.9rem;
+}
+
+.gacha-button {
+  background: linear-gradient(140deg, #f8d76a, #f1b24a);
+}
+
+.gacha-meta,
+.gacha-recent {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.gacha-reveal {
+  width: 100%;
+  margin-top: 0.45rem;
+  border: 1px solid rgba(126, 167, 211, 0.36);
+  border-radius: 12px;
+  padding: 0.65rem 0.75rem;
+  background: rgba(10, 25, 40, 0.92);
+}
+
+.gacha-reveal p {
+  margin: 0;
+}
+
+.gacha-reveal-rolling {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.gacha-reveal-result {
+  animation: revealPopup 0.35s ease-out;
+}
+
+.gacha-orb {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 30% 30%, #ffffff, #f26f74 45%, #7f1920);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 0 0 0 rgba(255, 192, 115, 0.7);
+  animation: orbPulse 0.9s ease-in-out infinite;
+}
+
 .status-row {
   margin-top: 1rem;
   display: flex;
   justify-content: space-between;
   gap: 0.5rem;
   color: var(--muted);
+}
+
+.collection-grid-wrapper {
+  margin-top: 0.85rem;
+}
+
+.collection-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.95rem;
+}
+
+.collection-sentinel {
+  height: 1px;
+  width: 100%;
+}
+
+.collection-loading-text,
+.collection-complete {
+  margin: 0.85rem 0.2rem 0;
+  text-align: center;
+  color: var(--muted);
+}
+
+.collection-complete {
+  color: #8ef0a3;
 }
 
 .pager {
@@ -243,7 +361,24 @@ button:disabled {
   color: inherit;
 }
 
+.card-detail-button {
+  all: unset;
+  display: block;
+  cursor: pointer;
+}
+
+.card-detail-button:focus-visible,
+.rating-star:focus-visible,
+.gacha-button:focus-visible {
+  outline: 2px solid #f4d35e;
+  outline-offset: 3px;
+}
+
 .card-button:hover {
+  transform: translateY(-2px) scale(1.01);
+}
+
+.card-detail-button:hover {
   transform: translateY(-2px) scale(1.01);
 }
 
@@ -251,9 +386,67 @@ button:disabled {
   opacity: 0.4;
 }
 
+.card-detail-button:hover::after {
+  opacity: 0.4;
+}
+
 .card img {
   width: 100%;
   height: auto;
+}
+
+.card-footer {
+  margin-top: 0.75rem;
+  border-top: 1px solid rgba(85, 125, 167, 0.38);
+  padding-top: 0.6rem;
+}
+
+.duplicate-label {
+  margin: 0 0 0.35rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.rarity-badge {
+  margin: 0.55rem 0 0;
+  width: fit-content;
+  border: 1px solid;
+  border-radius: 999px;
+  padding: 0.16rem 0.55rem;
+  font-size: 0.76rem;
+  color: #f8fbff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.rating-label {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.rating-row {
+  margin-top: 0.3rem;
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+.rating-star {
+  border: 1px solid rgba(133, 167, 204, 0.4);
+  border-radius: 8px;
+  padding: 0.3rem 0.45rem;
+  background: rgba(255, 255, 255, 0.03);
+  color: #f6cf61;
+  line-height: 1;
+}
+
+.rating-star:disabled {
+  color: #6e7b8a;
+}
+
+.rating-hint {
+  margin: 0.4rem 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
 }
 
 .image-fallback {
@@ -564,6 +757,32 @@ button:disabled {
   }
 }
 
+@keyframes orbPulse {
+  0% {
+    transform: scale(0.88);
+    box-shadow: 0 0 0 0 rgba(255, 192, 115, 0.65);
+  }
+  70% {
+    transform: scale(1.08);
+    box-shadow: 0 0 0 12px rgba(255, 192, 115, 0);
+  }
+  100% {
+    transform: scale(0.88);
+    box-shadow: 0 0 0 0 rgba(255, 192, 115, 0);
+  }
+}
+
+@keyframes revealPopup {
+  0% {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
 @media (max-width: 720px) {
   .header {
     align-items: stretch;
@@ -579,5 +798,14 @@ button:disabled {
 
   .modal-main-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

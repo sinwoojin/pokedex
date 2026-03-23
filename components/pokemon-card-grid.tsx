@@ -1,197 +1,203 @@
 "use client";
 
-import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchPokemonByQuery, fetchPokemonPage, PokemonApiError } from "@/lib/pokemon";
+import { useCardGridData } from "@/hooks/use-card-grid-data";
+import { usePokemonErrorMessage } from "@/hooks/use-pokemon-error-message";
+import { useGachaDraw } from "@/hooks/use-gacha-draw";
+import { usePokemonGridState } from "@/hooks/use-pokemon-grid-state";
+import { usePokemonModal } from "@/hooks/use-pokemon-modal";
+import { usePokemonRating } from "@/hooks/use-pokemon-rating";
+import { getGachaRarityColor, getGachaRarityLabel } from "@/lib/gacha";
 import { getTypeColor } from "@/lib/pokemon-colors";
-import { usePokedexStore } from "@/providers/pokedex-store-provider";
-import { PAGE_SIZE } from "@/stores/pokedex-store";
 import type { PokemonCard } from "@/types/pokemon";
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
 
 export function PokemonCardGrid() {
-  const queryClient = useQueryClient();
-  const query = usePokedexStore((store) => store.query);
-  const page = usePokedexStore((store) => store.page);
-  const sortOrder = usePokedexStore((store) => store.sortOrder);
-  const nextPage = usePokedexStore((store) => store.nextPage);
-  const prevPage = usePokedexStore((store) => store.prevPage);
+  const {
+    query,
+    sortOrder,
+    ownedPokemonIds,
+    ownedCardsById,
+    rarities,
+    duplicateCounts,
+    drawCount,
+    candies,
+    lastDrawnId,
+    lastDrawRarity,
+    lastDrawWasDuplicate,
+    lastCandyEarned
+  } = usePokemonGridState();
 
-  const [selected, setSelected] = useState<PokemonCard | null>(null);
+  const { selected, openModal, closeModal } = usePokemonModal();
+  const { getRating, ratePokemon } = usePokemonRating();
+  const { resolveErrorMessage } = usePokemonErrorMessage();
 
-  const pageQuery = useQuery({
-    queryKey: ["pokemon-page", sortOrder, page, PAGE_SIZE],
-    queryFn: () => fetchPokemonPage(page, PAGE_SIZE, sortOrder),
-    enabled: !query,
-    placeholderData: keepPreviousData
+  const {
+    isSearchMode,
+    cards,
+    total,
+    loading,
+    searchError
+  } = useCardGridData({
+    query,
+    sortOrder,
+    ownedPokemonIds,
+    ownedCardsById
   });
 
-  const searchQuery = useQuery({
-    queryKey: ["pokemon-search", sortOrder, query],
-    queryFn: () => fetchPokemonByQuery(query, sortOrder),
-    enabled: Boolean(query)
+  const { draw, isDrawing, drawError, poolError, isPoolPending, revealState } = useGachaDraw({
+    sortOrder,
+    onDrawSuccess: openModal
   });
 
-  const resolveErrorMessage = (currentError: unknown, isSearchMode: boolean): string | null => {
-    if (!currentError) {
-      return null;
-    }
+  const currentError = isSearchMode ? searchError : poolError;
+  const error = resolveErrorMessage(currentError, isSearchMode);
+  const gachaError = drawError ? resolveErrorMessage(drawError, false) : null;
+  const lastDrawnName = lastDrawnId ? ownedCardsById[lastDrawnId]?.name ?? `No.${lastDrawnId}` : null;
 
-    if (isSearchMode && currentError instanceof PokemonApiError && currentError.status === 404) {
-      return "포켓몬을 찾을 수 없습니다. 이름 또는 번호를 확인해주세요.";
-    }
+  const renderRatingButtons = (pokemon: PokemonCard, owned: boolean) => {
+    const currentRating = getRating(pokemon.id);
 
-    return "데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.";
-  };
-
-  const cards = useMemo(() => {
-    if (query) {
-      return searchQuery.data ?? [];
-    }
-    return pageQuery.data?.cards ?? [];
-  }, [pageQuery.data?.cards, query, searchQuery.data]);
-
-  const total = query ? cards.length : pageQuery.data?.total ?? 0;
-  const loading = query ? searchQuery.isPending : pageQuery.isPending;
-  const isPageTransitionLoading = !query && pageQuery.isFetching;
-  const currentError = query ? searchQuery.error : pageQuery.error;
-  const error = resolveErrorMessage(currentError, Boolean(query));
-
-  const maxPage = useMemo(() => {
-    if (query) {
-      return 1;
-    }
-    return Math.max(Math.ceil(total / PAGE_SIZE), 1);
-  }, [query, total]);
-
-  const canPrev = !query && page > 1;
-  const canNext = !query && page < maxPage;
-
-  useEffect(() => {
-    if (query || !pageQuery.data || page >= maxPage) {
-      return;
-    }
-
-    const nextPageNumber = page + 1;
-    void queryClient.prefetchQuery({
-      queryKey: ["pokemon-page", sortOrder, nextPageNumber, PAGE_SIZE],
-      queryFn: () => fetchPokemonPage(nextPageNumber, PAGE_SIZE, sortOrder)
-    });
-  }, [maxPage, page, pageQuery.data, query, queryClient, sortOrder]);
-
-  const handlePrev = () => {
-    if (isPageTransitionLoading) {
-      return;
-    }
-    prevPage();
-  };
-
-  const handleNext = () => {
-    if (isPageTransitionLoading) {
-      return;
-    }
-    nextPage();
+    return (
+      <div className="rating-row" role="group" aria-label={`${pokemon.name} 평점`}>
+        {[1, 2, 3, 4, 5].map((score) => (
+          <button
+            key={`${pokemon.id}-rating-${score}`}
+            type="button"
+            className="rating-star"
+            onClick={() => ratePokemon(pokemon.id, score)}
+            disabled={!owned}
+            aria-label={`${pokemon.name} ${score}점`}
+            aria-pressed={currentRating === score}
+          >
+            {score <= currentRating ? "★" : "☆"}
+          </button>
+        ))}
+      </div>
+    );
   };
 
   return (
-    <section>
-      <div className="status-row">
-        <p>{query ? "검색 결과" : `전체 ${total.toLocaleString()}마리`}</p>
-        <p>{query ? `${total.toLocaleString()}건` : `${page} / ${maxPage}`}</p>
+    <section className="collection-shell">
+      <div className="collection-toolbar">
+        <p className="collection-title">{isSearchMode ? "검색 결과" : "가챠 수집 도감"}</p>
+        <p className="collection-count">{isSearchMode ? `${total.toLocaleString()}장` : `보유 ${total.toLocaleString()}종`}</p>
       </div>
 
-      {!query && (
-        <div className="pager">
+      {!isSearchMode && (
+        <div className="gacha-panel">
           <button
             type="button"
-            className="ghost"
-            disabled={!canPrev || isPageTransitionLoading}
-            onClick={handlePrev}
+            className="gacha-button"
+            onClick={draw}
+            disabled={isDrawing || isPoolPending}
           >
-            이전
+            {isDrawing ? "가챠 뽑는 중..." : "가챠 뽑기"}
           </button>
-          <button
-            type="button"
-            className="ghost"
-            disabled={!canNext || isPageTransitionLoading}
-            onClick={handleNext}
-          >
-            다음
-          </button>
+          <p className="gacha-meta">총 뽑기 {drawCount.toLocaleString()}회</p>
+          <p className="gacha-meta">보유 캔디 {candies.toLocaleString()}개</p>
+          {lastDrawnName && <p className="gacha-recent">최근 획득: {lastDrawnName}</p>}
+          {lastDrawRarity && <p className="gacha-recent">최근 등급: {getGachaRarityLabel(lastDrawRarity)}</p>}
+          {lastDrawWasDuplicate && <p className="gacha-recent">중복 보상: +{lastCandyEarned} 캔디</p>}
+          {gachaError && <p className="message error">{gachaError}</p>}
+
+          {revealState.phase === "rolling" && (
+            <div className="gacha-reveal gacha-reveal-rolling" role="status" aria-live="polite">
+              <span className="gacha-orb" aria-hidden="true" />
+              <p>캡슐을 개봉하는 중...</p>
+            </div>
+          )}
+
+          {revealState.phase === "revealed" && (
+            <div className="gacha-reveal gacha-reveal-result" role="status" aria-live="polite">
+              <p>
+                {revealState.result.card.name} 등장! ({getGachaRarityLabel(revealState.result.rarity)})
+              </p>
+            </div>
+          )}
         </div>
       )}
 
-      {isPageTransitionLoading && <p className="page-loading-hint">페이지 불러오는 중...</p>}
+      {isSearchMode && <p className="collection-mode-hint">검색 모드: 필터된 카드만 표시됩니다.</p>}
 
       {error && <p className="message error">{error}</p>}
-      {!error && query && !loading && cards.length === 0 && (
+
+      {!error && isSearchMode && !loading && cards.length === 0 && (
         <p className="message">검색 결과가 없습니다. 다른 키워드로 시도해주세요.</p>
       )}
 
       {!error && (
-        <div className="grid">
-          {loading
-            ? Array.from({ length: query ? 1 : PAGE_SIZE }).map((_, index) => (
-                <article key={`skeleton-${index}`} className="card skeleton" data-testid="pokemon-skeleton">
-                  <div className="skeleton-line skeleton-id" />
-                  <div className="skeleton-image" />
-                  <div className="skeleton-line skeleton-title" />
-                  <div className="skeleton-chip-row">
-                    <div className="skeleton-chip" />
-                    <div className="skeleton-chip" />
-                  </div>
-                  <div className="skeleton-meta-row">
-                    <div className="skeleton-meta" />
-                    <div className="skeleton-meta" />
-                  </div>
-                </article>
-              ))
-            : cards.map((pokemon) => (
-                <button
-                  key={pokemon.id}
-                  type="button"
-                  className="card card-button"
-                  onClick={() => setSelected(pokemon)}
-                  aria-label={`${pokemon.name} 카드 상세 보기`}
-                  style={{ borderColor: pokemon.representativeColor }}
-                >
-                  <span className="id">#{pokemon.id.toString().padStart(4, "0")}</span>
-                  {pokemon.imageUrl ? (
-                    <Image src={pokemon.imageUrl} alt={pokemon.name} width={220} height={220} unoptimized />
-                  ) : (
-                    <div className="image-fallback">이미지 없음</div>
-                  )}
-                  <h2>{pokemon.name}</h2>
-                  <ul className="type-list">
-                    {pokemon.types.map((type) => (
-                      <li key={type} style={{ borderColor: getTypeColor(type), color: getTypeColor(type) }}>
-                        {type}
-                      </li>
-                    ))}
-                  </ul>
-                  <p className="rep-color-label">
-                    대표색: <span className="swatch" style={{ background: pokemon.representativeColor }} />
-                    {pokemon.speciesColor}
-                  </p>
-                  <dl className="meta">
-                    <div>
-                      <dt>키</dt>
-                      <dd>{pokemon.height}</dd>
+        <div className="collection-grid-wrapper">
+          <div className="collection-grid">
+            {loading
+              ? Array.from({ length: 1 }).map((_, index) => (
+                  <article key={`skeleton-${index}`} className="card skeleton" data-testid="pokemon-skeleton">
+                    <div className="skeleton-line skeleton-id" />
+                    <div className="skeleton-image" />
+                    <div className="skeleton-title" />
+                    <div className="skeleton-chip-row">
+                      <div className="skeleton-chip" />
+                      <div className="skeleton-chip" />
                     </div>
-                    <div>
-                      <dt>몸무게</dt>
-                      <dd>{pokemon.weight}</dd>
-                    </div>
-                  </dl>
-                </button>
-              ))}
+                  </article>
+                ))
+              : cards.map((pokemon) => {
+                  const owned = ownedPokemonIds.includes(pokemon.id);
+                  const rarity = rarities[pokemon.id];
+                  const duplicateCount = duplicateCounts[pokemon.id] ?? 0;
+
+                  return (
+                    <article key={pokemon.id} className="card" style={{ borderColor: pokemon.representativeColor }}>
+                      <button
+                        type="button"
+                        className="card-detail-button"
+                        onClick={() => openModal(pokemon)}
+                        aria-label={`${pokemon.name} 카드 상세 보기`}
+                      >
+                        <span className="id">#{pokemon.id.toString().padStart(4, "0")}</span>
+                        {pokemon.imageUrl ? (
+                          <Image src={pokemon.imageUrl} alt={pokemon.name} width={240} height={240} unoptimized />
+                        ) : (
+                          <div className="image-fallback">이미지 없음</div>
+                        )}
+                        <h2>{pokemon.name}</h2>
+                        <ul className="type-list">
+                          {pokemon.types.map((type) => (
+                            <li key={type} style={{ borderColor: getTypeColor(type), color: getTypeColor(type) }}>
+                              {type}
+                            </li>
+                          ))}
+                        </ul>
+                        <p className="rep-color-label">
+                          대표색: <span className="swatch" style={{ background: pokemon.representativeColor }} />
+                          {pokemon.speciesColor}
+                        </p>
+                        {rarity && (
+                          <p className="rarity-badge" style={{ borderColor: getGachaRarityColor(rarity) }}>
+                            {getGachaRarityLabel(rarity)}
+                          </p>
+                        )}
+                      </button>
+
+                      <div className="card-footer">
+                        <p className="duplicate-label">중복 획득 {duplicateCount}회</p>
+                        <p className="rating-label">평점</p>
+                        {renderRatingButtons(pokemon, owned)}
+                        {!owned && <p className="rating-hint">가챠로 획득한 카드만 평점 가능</p>}
+                      </div>
+                    </article>
+                  );
+                })}
+          </div>
+
+          {!isSearchMode && !cards.length && <p className="collection-loading-text">가챠를 돌려 첫 카드를 수집해보세요.</p>}
+          {!isSearchMode && !!cards.length && <p className="collection-complete">수집 중</p>}
         </div>
       )}
 
       {selected && (
-        <div className="modal-backdrop" role="presentation" onClick={() => setSelected(null)}>
+        <div className="modal-backdrop" role="presentation" onClick={closeModal}>
           <article className="modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
-            <button type="button" className="ghost close-modal" onClick={() => setSelected(null)}>
+            <button type="button" className="ghost close-modal" onClick={closeModal}>
               닫기
             </button>
             <div className="modal-main-grid">
@@ -220,6 +226,11 @@ export function PokemonCardGrid() {
                       </li>
                     ))}
                   </ul>
+                </section>
+
+                <section className="modal-section">
+                  <h4>평점</h4>
+                  {renderRatingButtons(selected, ownedPokemonIds.includes(selected.id))}
                 </section>
 
                 <section className="modal-section">

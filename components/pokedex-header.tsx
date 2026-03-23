@@ -30,7 +30,8 @@ export function PokedexHeader() {
     <header className="header">
       <div>
         <p className="eyebrow">POKEDEX</p>
-        <h1>포켓몬 카드 도감</h1>
+        <h1>포켓몬 카드 수집소</h1>
+        <p className="header-subtitle">가챠로 포켓몬 카드를 뽑고 내 컬렉션에 평점을 남겨보세요</p>
       </div>
 
       <form className="search-form" onSubmit={onSubmit}>
