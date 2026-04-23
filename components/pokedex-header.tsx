@@ -5,6 +5,8 @@ import { usePokedexStore } from "@/providers/pokedex-store-provider";
 import type { SortOrder } from "@/stores/pokedex-store";
 
 export function PokedexHeader() {
+  const trendingTopics = ["포챔스 메타", "카운터 픽", "실전 후기", "입문 질문"] as const;
+
   const query = usePokedexStore((store) => store.query);
   const setQuery = usePokedexStore((store) => store.setQuery);
   const clearQuery = usePokedexStore((store) => store.clearQuery);
@@ -28,28 +30,37 @@ export function PokedexHeader() {
 
   return (
     <header className="header">
-      <div>
-        <p className="eyebrow">POKEDEX</p>
-        <h1>포켓몬 카드 수집소</h1>
-        <p className="header-subtitle">가챠로 포켓몬 카드를 뽑고 내 컬렉션에 평점을 남겨보세요</p>
+      <div className="header-copy-block">
+        <p className="eyebrow">POKE COMMUNITY</p>
+        <h1>포챔스 이슈를 모아보는 포켓몬 정보 공유 커뮤니티</h1>
+        <p className="header-subtitle">
+          메타에서 자주 언급되는 포켓몬을 검색하고, 랜덤 추천으로 흐름을 훑고, 커뮤니티 감각으로
+          평점을 남길 수 있게 구성했습니다.
+        </p>
+
+        <ul className="topic-chip-list" aria-label="주요 커뮤니티 주제">
+          {trendingTopics.map((topic) => (
+            <li key={topic}>{topic}</li>
+          ))}
+        </ul>
       </div>
 
       <form className="search-form" onSubmit={onSubmit}>
         <input
-          aria-label="포켓몬 검색"
+          aria-label="포켓몬 커뮤니티 검색"
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
-          placeholder="이름/번호 검색 (예: 피카츄, 피, pikachu, 25)"
+          placeholder="포켓몬명·번호·메타 키워드 검색 (예: 피카츄, 25, 전기)"
         />
-        <button type="submit">검색</button>
+        <button type="submit">토픽 찾기</button>
         <button type="button" className="ghost" onClick={onReset}>
-          초기화
+          필터 초기화
         </button>
         <label className="sort-wrap">
-          도감번호
-          <select value={sortOrder} onChange={onSortChange} aria-label="도감번호 정렬">
-            <option value="asc">오름차순</option>
-            <option value="desc">내림차순</option>
+          정렬
+          <select value={sortOrder} onChange={onSortChange} aria-label="커뮤니티 목록 정렬">
+            <option value="asc">도감순</option>
+            <option value="desc">역순</option>
           </select>
         </label>
       </form>

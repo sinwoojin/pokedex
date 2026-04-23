@@ -16,9 +16,9 @@ describe("PokedexHeader", () => {
       </PokedexStoreProvider>
     );
 
-    const input = screen.getByLabelText("포켓몬 검색");
+    const input = screen.getByLabelText("포켓몬 커뮤니티 검색");
     fireEvent.change(input, { target: { value: "charizard" } });
-    fireEvent.click(screen.getByRole("button", { name: "검색" }));
+    fireEvent.click(screen.getByRole("button", { name: "토픽 찾기" }));
 
     expect(screen.getByTestId("query-value")).toHaveTextContent("charizard");
   });
