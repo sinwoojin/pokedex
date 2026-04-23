@@ -48,6 +48,7 @@ const typeDetailCache = new Map<string, Promise<PokemonApiTypeDetail>>();
 const abilityDetailCache = new Map<string, Promise<PokemonAbilityResponse>>();
 const speciesDetailCache = new Map<string, Promise<PokemonSpeciesResponse>>();
 const pokemonCardCache = new Map<number, Promise<PokemonCard>>();
+let pokemonSpeciesTotalCountPromise: Promise<number> | null = null;
 
 type SearchIndexEntry = {
   id: number;
@@ -379,6 +380,14 @@ export const fetchPokemonPage = async (
 };
 
 export const fetchPokemonTotalCount = async (): Promise<number> => {
-  const totalCountResponse = await fetchJson<PokemonListResponse>(`${API_BASE}/pokemon?limit=1&offset=0`);
-  return totalCountResponse.count;
+  if (!pokemonSpeciesTotalCountPromise) {
+    pokemonSpeciesTotalCountPromise = fetchJson<PokemonListResponse>(`${API_BASE}/pokemon-species?limit=1&offset=0`)
+      .then((response) => response.count)
+      .catch((error) => {
+        pokemonSpeciesTotalCountPromise = null;
+        throw error;
+      });
+  }
+
+  return pokemonSpeciesTotalCountPromise;
 };
