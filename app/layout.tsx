@@ -10,15 +10,16 @@ const siteUrl =
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "포켓몬 카드 도감",
-    template: "%s | 포켓몬 카드 도감"
+    default: "포챔스 포켓몬 커뮤니티",
+    template: "%s | 포챔스 포켓몬 커뮤니티"
   },
   description:
-    "PokeAPI 기반 포켓몬 카드 도감. 한글/영문 검색, 부분 검색, 타입/약점/진화 과정까지 한 번에 확인할 수 있습니다.",
+    "포챔스 분위기의 포켓몬 정보 공유 커뮤니티. 검색, 랜덤 추천, 상성·특성·진화 정보와 커뮤니티 평점을 한 화면에서 확인할 수 있습니다.",
   keywords: [
-    "포켓몬 도감",
-    "포켓몬 카드",
-    "포켓몬 검색",
+    "포켓몬 커뮤니티",
+    "포챔스",
+    "포켓몬 메타",
+    "포켓몬 정보 공유",
     "PokeAPI",
     "Pokemon Dex",
     "Next.js"
@@ -41,23 +42,23 @@ export const metadata: Metadata = {
     type: "website",
     locale: "ko_KR",
     url: "/",
-    title: "포켓몬 카드 도감",
+    title: "포챔스 포켓몬 커뮤니티",
     description:
-      "PokeAPI 기반 포켓몬 카드 도감. 한글/영문 검색, 부분 검색, 타입/약점/진화 과정까지 제공.",
-    siteName: "포켓몬 카드 도감",
+      "지금 말 많은 포켓몬과 메타 이슈를 같이 정리하는 포켓몬 정보 공유 커뮤니티.",
+    siteName: "포챔스 포켓몬 커뮤니티",
     images: [
       {
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "포켓몬 카드 도감 OG 이미지"
+        alt: "포챔스 포켓몬 커뮤니티 OG 이미지"
       }
     ]
   },
   twitter: {
     card: "summary_large_image",
-    title: "포켓몬 카드 도감",
-    description: "한글/영문 부분 검색 지원 포켓몬 도감",
+    title: "포챔스 포켓몬 커뮤니티",
+    description: "포켓몬 메타와 정보를 같이 보는 커뮤니티형 포켓몬 허브",
     images: ["/twitter-image"]
   },
   category: "technology"

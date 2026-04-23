@@ -37,13 +37,13 @@ export default function OpenGraphImage() {
           }}
         >
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            <div style={{ color: "#ffcb05", fontSize: "34px", fontWeight: 700 }}>POKEDEX</div>
-            <div style={{ fontSize: "82px", fontWeight: 800, lineHeight: 1.1 }}>포켓몬 카드 도감</div>
+            <div style={{ color: "#ffcb05", fontSize: "34px", fontWeight: 700 }}>POKE COMMUNITY</div>
+            <div style={{ fontSize: "82px", fontWeight: 800, lineHeight: 1.1 }}>포챔스 포켓몬 커뮤니티</div>
             <div style={{ fontSize: "32px", color: "#c8d7ea" }}>
-              한글/영문 부분 검색, 타입/약점, 진화 과정까지
+              메타 이슈, 포켓몬 정보, 댓글과 반응까지 한 번에
             </div>
           </div>
-          <div style={{ fontSize: "28px", color: "#b4c9df" }}>PokeAPI + Next.js</div>
+          <div style={{ fontSize: "28px", color: "#b4c9df" }}>PokeAPI + Next.js + Local Community Feed</div>
         </div>
       </div>
     ),

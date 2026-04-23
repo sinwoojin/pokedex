@@ -23,9 +23,9 @@ export default function TwitterImage() {
             "radial-gradient(circle at 15% 20%, rgba(255,203,5,0.28), transparent 35%), linear-gradient(140deg, #081426, #112b48)",
           color: "#f7fbff"
         }}
-      >
-        <div
-          style={{
+        >
+          <div
+            style={{
             display: "flex",
             flexDirection: "column",
             gap: "10px",
@@ -33,11 +33,11 @@ export default function TwitterImage() {
             borderRadius: "22px",
             padding: "36px 46px",
             background: "rgba(9, 22, 38, 0.62)"
-          }}
-        >
-          <div style={{ color: "#ffcb05", fontSize: "28px", fontWeight: 700 }}>포켓몬 카드 도감</div>
-          <div style={{ fontSize: "58px", fontWeight: 800 }}>한글 부분 검색 지원</div>
-          <div style={{ fontSize: "28px", color: "#c8d7ea" }}>PokeAPI 기반 Dex</div>
+            }}
+          >
+          <div style={{ color: "#ffcb05", fontSize: "28px", fontWeight: 700 }}>포챔스 포켓몬 커뮤니티</div>
+          <div style={{ fontSize: "58px", fontWeight: 800 }}>정보 글·댓글·추천 지원</div>
+          <div style={{ fontSize: "28px", color: "#c8d7ea" }}>PokeAPI 기반 Community Hub</div>
         </div>
       </div>
     ),
