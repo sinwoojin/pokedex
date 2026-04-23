@@ -74,6 +74,9 @@ export type PokedexActions = {
   prevPage: () => void;
   recordGachaDraw: (card: PokemonCard, rarity: GachaRarity, duplicateCandy: number) => void;
   setPokemonRating: (pokemonId: number, rating: number) => void;
+  replaceCommunityPosts: (posts: CommunityPost[]) => void;
+  replaceCommunityPost: (post: CommunityPost) => void;
+  setCommunityPostLiked: (postId: string, liked: boolean) => void;
   createCommunityPost: (input: {
     board: CommunityBoard;
     title: string;
@@ -253,6 +256,31 @@ export const createPokedexStore = (initState: Partial<PokedexState> = {}) => {
               ...currentState.ratings,
               [pokemonId]: Math.max(1, Math.min(rating, 5))
             }
+          })),
+        replaceCommunityPosts: (communityPosts) => set({ communityPosts }),
+        replaceCommunityPost: (post) =>
+          set((currentState) => {
+            const existingIndex = currentState.communityPosts.findIndex((candidate) => candidate.id === post.id);
+
+            if (existingIndex === -1) {
+              return {
+                communityPosts: [post, ...currentState.communityPosts]
+              };
+            }
+
+            return {
+              communityPosts: currentState.communityPosts.map((candidate) =>
+                candidate.id === post.id ? post : candidate
+              )
+            };
+          }),
+        setCommunityPostLiked: (postId, liked) =>
+          set((currentState) => ({
+            likedCommunityPostIds: liked
+              ? currentState.likedCommunityPostIds.includes(postId)
+                ? currentState.likedCommunityPostIds
+                : [...currentState.likedCommunityPostIds, postId]
+              : currentState.likedCommunityPostIds.filter((id) => id !== postId)
           })),
         createCommunityPost: ({ board, title, content, relatedPokemon, tags }) =>
           set((currentState) => {

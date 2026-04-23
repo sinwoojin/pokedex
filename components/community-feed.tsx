@@ -1,6 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import {
+  addCommunityCommentRequest,
+  createCommunityPostRequest,
+  isCommunityApiEnabled,
+  listCommunityPosts,
+  toggleCommunityPostLikeRequest,
+  toggleCommunityPostPinnedRequest
+} from "@/lib/community-api";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePokedexStore } from "@/providers/pokedex-store-provider";
 import type { CommunityBoard, CommunityFeedFilter, CommunitySortOrder } from "@/stores/pokedex-store";
 
@@ -46,6 +54,9 @@ export function CommunityFeed() {
   const activeCommunitySort = usePokedexStore((store) => store.activeCommunitySort);
   const activeCommunityQuery = usePokedexStore((store) => store.activeCommunityQuery);
   const savedCommunityViews = usePokedexStore((store) => store.savedCommunityViews);
+  const replaceCommunityPosts = usePokedexStore((store) => store.replaceCommunityPosts);
+  const replaceCommunityPost = usePokedexStore((store) => store.replaceCommunityPost);
+  const setCommunityPostLiked = usePokedexStore((store) => store.setCommunityPostLiked);
   const createCommunityPost = usePokedexStore((store) => store.createCommunityPost);
   const setActiveCommunityFilter = usePokedexStore((store) => store.setActiveCommunityFilter);
   const setActiveRelatedPokemonFilter = usePokedexStore((store) => store.setActiveRelatedPokemonFilter);
@@ -65,6 +76,36 @@ export function CommunityFeed() {
   const [content, setContent] = useState("");
   const [savedViewName, setSavedViewName] = useState("");
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
+  const [apiError, setApiError] = useState<string | null>(null);
+  const communityApiEnabled = isCommunityApiEnabled();
+
+  const syncCommunityPosts = useCallback(async () => {
+    if (!communityApiEnabled) {
+      return;
+    }
+
+    try {
+      const remotePosts = await listCommunityPosts();
+      replaceCommunityPosts(remotePosts);
+      setApiError(null);
+    } catch {
+      setApiError("실서비스 API 연결에 실패해 현재는 로컬 데이터로 표시 중입니다.");
+    }
+  }, [communityApiEnabled, replaceCommunityPosts]);
+
+  useEffect(() => {
+    if (!communityApiEnabled) {
+      return;
+    }
+
+    const syncTimer = window.setTimeout(() => {
+      void syncCommunityPosts();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(syncTimer);
+    };
+  }, [communityApiEnabled, syncCommunityPosts]);
 
   const totalComments = useMemo(
     () => posts.reduce((count, post) => count + post.comments.length, 0),
@@ -166,16 +207,34 @@ export function CommunityFeed() {
     return sortedPosts;
   }, [activeCommunityQuery, activeCommunitySort, activeFilter, activeRelatedPokemonFilter, posts]);
 
-  const onSubmitPost = () => {
+  const onSubmitPost = async () => {
     const tags = tagInput
       .split(",")
       .map((tag) => tag.trim())
       .filter(Boolean);
 
-    createCommunityPost({ board, title, content, relatedPokemon, tags });
-
     if (!title.trim() || !content.trim()) {
       return;
+    }
+
+    if (communityApiEnabled) {
+      try {
+        const createdPost = await createCommunityPostRequest({
+          board,
+          title,
+          content,
+          relatedPokemon,
+          tags
+        });
+
+        replaceCommunityPost(createdPost);
+        setApiError(null);
+      } catch {
+        setApiError("새 글을 서버에 저장하지 못했습니다. 잠시 후 다시 시도해주세요.");
+        return;
+      }
+    } else {
+      createCommunityPost({ board, title, content, relatedPokemon, tags });
     }
 
     setTitle("");
@@ -195,18 +254,63 @@ export function CommunityFeed() {
     setSavedViewName("");
   };
 
-  const onSubmitComment = (postId: string) => {
+  const onSubmitComment = async (postId: string) => {
     const draft = commentDrafts[postId] ?? "";
-    addCommunityComment(postId, draft);
 
     if (!draft.trim()) {
       return;
+    }
+
+    if (communityApiEnabled) {
+      try {
+        const updatedPost = await addCommunityCommentRequest(postId, draft);
+        replaceCommunityPost(updatedPost);
+        setApiError(null);
+      } catch {
+        setApiError("댓글을 서버에 저장하지 못했습니다. 잠시 후 다시 시도해주세요.");
+        return;
+      }
+    } else {
+      addCommunityComment(postId, draft);
     }
 
     setCommentDrafts((current) => ({
       ...current,
       [postId]: ""
     }));
+  };
+
+  const onToggleLike = async (postId: string, liked: boolean) => {
+    if (communityApiEnabled) {
+      try {
+        const updatedPost = await toggleCommunityPostLikeRequest(postId, liked ? -1 : 1);
+        replaceCommunityPost(updatedPost);
+        setCommunityPostLiked(postId, !liked);
+        setApiError(null);
+      } catch {
+        setApiError("추천 반영에 실패했습니다. 잠시 후 다시 시도해주세요.");
+      }
+
+      return;
+    }
+
+    toggleCommunityPostLike(postId);
+  };
+
+  const onTogglePin = async (postId: string, pinned: boolean) => {
+    if (communityApiEnabled) {
+      try {
+        const updatedPost = await toggleCommunityPostPinnedRequest(postId, !pinned);
+        replaceCommunityPost(updatedPost);
+        setApiError(null);
+      } catch {
+        setApiError("고정 상태 변경에 실패했습니다. 잠시 후 다시 시도해주세요.");
+      }
+
+      return;
+    }
+
+    toggleCommunityPostPinned(postId);
   };
 
   return (
@@ -219,6 +323,12 @@ export function CommunityFeed() {
             외부 커뮤니티 패턴을 반영해서, 검색·핀·저장된 뷰까지 붙인 정보 공유형 커뮤니티 대시보드로
             확장했습니다.
           </p>
+          <p className="community-feed-copy">
+            {communityApiEnabled
+              ? "현재 커뮤니티 피드는 별도 API 서버와 연동되며, Oracle 저장소를 붙일 수 있는 구조로 동작합니다."
+              : "현재 커뮤니티 피드는 로컬 모드입니다. NEXT_PUBLIC_COMMUNITY_API_BASE_URL 설정 시 실서비스 API와 연결됩니다."}
+          </p>
+          {apiError && <p className="message error">{apiError}</p>}
         </div>
 
         <dl className="community-feed-stats">
@@ -490,10 +600,10 @@ export function CommunityFeed() {
 
                   <div className="community-post-actions">
                     <div className="community-post-action-group">
-                      <button type="button" className={liked ? "ghost is-active" : "ghost"} onClick={() => toggleCommunityPostLike(post.id)}>
+                      <button type="button" className={liked ? "ghost is-active" : "ghost"} onClick={() => void onToggleLike(post.id, liked)}>
                         {liked ? `추천 취소 ${post.likes}` : `추천 ${post.likes}`}
                       </button>
-                      <button type="button" className={post.pinned ? "ghost is-active" : "ghost"} onClick={() => toggleCommunityPostPinned(post.id)}>
+                      <button type="button" className={post.pinned ? "ghost is-active" : "ghost"} onClick={() => void onTogglePin(post.id, post.pinned)}>
                         {post.pinned ? "고정 해제" : "고정하기"}
                       </button>
                     </div>
@@ -512,7 +622,7 @@ export function CommunityFeed() {
                       }
                       placeholder="이 글에 의견 남기기"
                     />
-                    <button type="button" className="ghost" onClick={() => onSubmitComment(post.id)}>
+                    <button type="button" className="ghost" onClick={() => void onSubmitComment(post.id)}>
                       댓글 등록
                     </button>
                   </div>
