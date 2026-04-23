@@ -68,15 +68,18 @@ describe("PokemonCardGrid", () => {
 
     renderWithProviders(<PokemonCardGrid />);
 
-    await userEvent.click(screen.getByRole("button", { name: "가챠 뽑기" }));
+    const hotpickButton = await screen.findByRole("button", { name: "핫픽 랜덤 추천" });
 
-    await waitFor(() => expect(screen.getByText("최근 획득: 피카츄")).toBeInTheDocument());
+    await waitFor(() => expect(hotpickButton).toBeEnabled());
+    await userEvent.click(hotpickButton);
+
+    await waitFor(() => expect(screen.getByText("최근 화제 포켓몬: 피카츄")).toBeInTheDocument());
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByText("특성")).toBeInTheDocument();
+    expect(screen.getByText("자주 언급되는 특성")).toBeInTheDocument();
     expect(screen.getByText("피뢰침")).toBeInTheDocument();
     expect(screen.getByText("땅 x2")).toBeInTheDocument();
-    expect(screen.getByText("진화 과정")).toBeInTheDocument();
+    expect(screen.getByText("운용 루트 / 진화 과정")).toBeInTheDocument();
     expect(screen.getByText("피츄")).toBeInTheDocument();
 
     const fivePointButtons = screen.getAllByRole("button", { name: "피카츄 5점" });
@@ -92,6 +95,38 @@ describe("PokemonCardGrid", () => {
     renderWithProviders(<PokemonCardGrid />, { query: "피카", page: 1, sortOrder: "asc" });
 
     expect(screen.getAllByTestId("pokemon-skeleton").length).toBeGreaterThan(0);
+  });
+
+  it("shows locally owned cards while search query matches archive data", async () => {
+    mockedFetchPokemonTotalCount.mockResolvedValue(1025);
+    mockedFetchPokemonByQuery.mockResolvedValue([]);
+
+    renderWithProviders(<PokemonCardGrid />, {
+      query: "피카츄",
+      ownedPokemonIds: [25],
+      ownedCardsById: {
+        25: {
+          id: 25,
+          name: "피카츄",
+          imageUrl: "https://example.com/pikachu.png",
+          types: ["전기"],
+          height: 4,
+          weight: 60,
+          abilities: ["정전기", "피뢰침"],
+          speciesColor: "노랑",
+          representativeColor: "#E9C84A",
+          weaknesses: [{ name: "땅", color: "#E2BF65", multiplier: 2 }],
+          evolutionStages: ["피츄", "피카츄", "라이츄"],
+          stats: [{ name: "HP", value: 35 }]
+        }
+      },
+      rarities: {},
+      duplicateCounts: {},
+      ratings: {}
+    });
+
+    expect(await screen.findByText("피카츄")).toBeInTheDocument();
+    expect(screen.getByText("검색된 포켓몬 토픽")).toBeInTheDocument();
   });
 
   it("awards candy on duplicate draw", async () => {
@@ -120,11 +155,14 @@ describe("PokemonCardGrid", () => {
 
     renderWithProviders(<PokemonCardGrid />);
 
-    await userEvent.click(screen.getByRole("button", { name: "가챠 뽑기" }));
-    await waitFor(() => expect(screen.getByText("보유 1종")).toBeInTheDocument());
+    const hotpickButton = await screen.findByRole("button", { name: "핫픽 랜덤 추천" });
 
-    await userEvent.click(screen.getByRole("button", { name: "가챠 뽑기" }));
+    await waitFor(() => expect(hotpickButton).toBeEnabled());
+    await userEvent.click(hotpickButton);
+    await waitFor(() => expect(screen.getByText("추천 기록 1종")).toBeInTheDocument());
 
-    await waitFor(() => expect(screen.getByText(/중복 보상:/)).toBeInTheDocument());
+    await userEvent.click(hotpickButton);
+
+    await waitFor(() => expect(screen.getByText(/재언급 보너스:/)).toBeInTheDocument());
   });
 });

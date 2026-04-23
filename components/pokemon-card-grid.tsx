@@ -79,8 +79,8 @@ export function PokemonCardGrid() {
   return (
     <section className="collection-shell">
       <div className="collection-toolbar">
-        <p className="collection-title">{isSearchMode ? "검색 결과" : "가챠 수집 도감"}</p>
-        <p className="collection-count">{isSearchMode ? `${total.toLocaleString()}장` : `보유 ${total.toLocaleString()}종`}</p>
+        <p className="collection-title">{isSearchMode ? "검색된 포켓몬 토픽" : "실시간 포켓몬 정보 아카이브"}</p>
+        <p className="collection-count">{isSearchMode ? `${total.toLocaleString()}건` : `추천 기록 ${total.toLocaleString()}종`}</p>
       </div>
 
       {!isSearchMode && (
@@ -91,38 +91,38 @@ export function PokemonCardGrid() {
             onClick={draw}
             disabled={isDrawing || isPoolPending}
           >
-            {isDrawing ? "가챠 뽑는 중..." : "가챠 뽑기"}
+            {isDrawing ? "핫픽 불러오는 중..." : "핫픽 랜덤 추천"}
           </button>
-          <p className="gacha-meta">총 뽑기 {drawCount.toLocaleString()}회</p>
-          <p className="gacha-meta">보유 캔디 {candies.toLocaleString()}개</p>
-          {lastDrawnName && <p className="gacha-recent">최근 획득: {lastDrawnName}</p>}
-          {lastDrawRarity && <p className="gacha-recent">최근 등급: {getGachaRarityLabel(lastDrawRarity)}</p>}
-          {lastDrawWasDuplicate && <p className="gacha-recent">중복 보상: +{lastCandyEarned} 캔디</p>}
+          <p className="gacha-meta">누적 추천 열람 {drawCount.toLocaleString()}회</p>
+          <p className="gacha-meta">커뮤니티 분석 포인트 {candies.toLocaleString()}P</p>
+          {lastDrawnName && <p className="gacha-recent">최근 화제 포켓몬: {lastDrawnName}</p>}
+          {lastDrawRarity && <p className="gacha-recent">현재 주목도: {getGachaRarityLabel(lastDrawRarity)}</p>}
+          {lastDrawWasDuplicate && <p className="gacha-recent">재언급 보너스: +{lastCandyEarned}P</p>}
           {gachaError && <p className="message error">{gachaError}</p>}
 
           {revealState.phase === "rolling" && (
             <div className="gacha-reveal gacha-reveal-rolling" role="status" aria-live="polite">
               <span className="gacha-orb" aria-hidden="true" />
-              <p>캡슐을 개봉하는 중...</p>
+              <p>오늘의 핫픽을 불러오는 중...</p>
             </div>
           )}
 
           {revealState.phase === "revealed" && (
             <div className="gacha-reveal gacha-reveal-result" role="status" aria-live="polite">
               <p>
-                {revealState.result.card.name} 등장! ({getGachaRarityLabel(revealState.result.rarity)})
+                {revealState.result.card.name} 토픽 오픈! (주목도 {getGachaRarityLabel(revealState.result.rarity)})
               </p>
             </div>
           )}
         </div>
       )}
 
-      {isSearchMode && <p className="collection-mode-hint">검색 모드: 필터된 카드만 표시됩니다.</p>}
+      {isSearchMode && <p className="collection-mode-hint">검색 모드: 조건에 맞는 포켓몬 정보 글감만 모아 보여줍니다.</p>}
 
       {error && <p className="message error">{error}</p>}
 
       {!error && isSearchMode && !loading && cards.length === 0 && (
-        <p className="message">검색 결과가 없습니다. 다른 키워드로 시도해주세요.</p>
+        <p className="message">검색된 포켓몬 토픽이 없습니다. 다른 이름이나 타입 키워드로 시도해주세요.</p>
       )}
 
       {!error && (
@@ -168,29 +168,29 @@ export function PokemonCardGrid() {
                           ))}
                         </ul>
                         <p className="rep-color-label">
-                          대표색: <span className="swatch" style={{ background: pokemon.representativeColor }} />
+                          대표 컬러: <span className="swatch" style={{ background: pokemon.representativeColor }} />
                           {pokemon.speciesColor}
                         </p>
                         {rarity && (
                           <p className="rarity-badge" style={{ borderColor: getGachaRarityColor(rarity) }}>
-                            {getGachaRarityLabel(rarity)}
+                            주목도 {getGachaRarityLabel(rarity)}
                           </p>
                         )}
                       </button>
 
                       <div className="card-footer">
-                        <p className="duplicate-label">중복 획득 {duplicateCount}회</p>
-                        <p className="rating-label">평점</p>
+                        <p className="duplicate-label">커뮤니티 언급 {duplicateCount}회</p>
+                        <p className="rating-label">커뮤니티 평점</p>
                         {renderRatingButtons(pokemon, owned)}
-                        {!owned && <p className="rating-hint">가챠로 획득한 카드만 평점 가능</p>}
+                        {!owned && <p className="rating-hint">랜덤 추천으로 열린 포켓몬부터 평점을 남길 수 있습니다.</p>}
                       </div>
                     </article>
                   );
                 })}
           </div>
 
-          {!isSearchMode && !cards.length && <p className="collection-loading-text">가챠를 돌려 첫 카드를 수집해보세요.</p>}
-          {!isSearchMode && !!cards.length && <p className="collection-complete">수집 중</p>}
+          {!isSearchMode && !cards.length && <p className="collection-loading-text">핫픽 랜덤 추천으로 첫 포켓몬 이슈를 열어보세요.</p>}
+          {!isSearchMode && !!cards.length && <p className="collection-complete">커뮤니티 흐름 추적 중</p>}
         </div>
       )}
 
@@ -218,7 +218,7 @@ export function PokemonCardGrid() {
                 </div>
 
                 <section className="modal-section">
-                  <h4>타입</h4>
+                  <h4>핵심 타입</h4>
                   <ul className="type-list">
                     {selected.types.map((type) => (
                       <li key={type} style={{ borderColor: getTypeColor(type), color: getTypeColor(type) }}>
@@ -229,12 +229,12 @@ export function PokemonCardGrid() {
                 </section>
 
                 <section className="modal-section">
-                  <h4>평점</h4>
+                  <h4>커뮤니티 평점</h4>
                   {renderRatingButtons(selected, ownedPokemonIds.includes(selected.id))}
                 </section>
 
                 <section className="modal-section">
-                  <h4>약점 타입</h4>
+                  <h4>카운터 체크</h4>
                   <ul className="ability-list">
                     {selected.weaknesses.map((weakness) => (
                       <li key={weakness.name} style={{ borderColor: weakness.color, color: weakness.color }}>
@@ -245,7 +245,7 @@ export function PokemonCardGrid() {
                 </section>
 
                 <section className="modal-section">
-                  <h4>특성</h4>
+                  <h4>자주 언급되는 특성</h4>
                   <ul className="ability-list">
                     {selected.abilities.map((ability) => (
                       <li key={ability}>{ability}</li>
@@ -254,7 +254,7 @@ export function PokemonCardGrid() {
                 </section>
 
                 <section className="modal-section">
-                  <h4>능력치</h4>
+                  <h4>기본 스탯 브리핑</h4>
                   <ul className="stats-list">
                     {selected.stats.map((stat) => (
                       <li key={stat.name}>
@@ -271,7 +271,7 @@ export function PokemonCardGrid() {
             </div>
 
             <section className="modal-section">
-              <h4>진화 과정</h4>
+              <h4>운용 루트 / 진화 과정</h4>
               <ul className="evolution-list">
                 {selected.evolutionStages.map((stage, index) => (
                   <li key={`${stage}-${index}`}>
